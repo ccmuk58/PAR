@@ -56,7 +56,8 @@ int main()
                     continue;
                 }
 
-                renderer.Render();
+                // renderer.Render();
+                renderer.Render(static_cast<float>(glfwGetTime()));
                 renderer.Present(true);
             }
 

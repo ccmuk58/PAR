@@ -16,7 +16,30 @@ namespace
 		float pos[3];
 		float color[3];
 	};
+	struct alignas(16) PerFrameCB
+	{
+		DirectX::XMFLOAT4X4 worldViewProj;
+	};
 
+
+	const Vertex vertices[] = {
+	{ { -0.5f,-0.5f,-0.5f },{ 0,0,0 } }, // 0
+	{ { -0.5f, 0.5f,-0.5f },{ 0,1,0 } }, // 1
+	{ { 0.5f, 0.5f,-0.5f },{ 1,1,0 } }, // 2
+	{ { 0.5f,-0.5f,-0.5f },{ 1,0,0 } }, // 3
+	{ { -0.5f,-0.5f, 0.5f },{ 0,0,1 } }, // 4
+	{ { -0.5f, 0.5f, 0.5f },{ 0,1,1 } }, // 5
+	{ { 0.5f, 0.5f, 0.5f },{ 1,1,1 } }, // 6
+	{ { 0.5f,-0.5f, 0.5f },{ 1,0,1 } }, // 7
+	};
+	const uint16_t indices[] = {
+		0,1,2, 0,2,3,   // 앞 (-Z)
+		7,6,5, 7,5,4,   // 뒤 (+Z)
+		4,5,1, 4,1,0,   // 왼 (-X)
+		3,2,6, 3,6,7,   // 오른 (+X)
+		1,5,6, 1,6,2,   // 위 (+Y)
+		3,7,4, 3,4,0,   // 아래 (-Y)
+	};
 	bool Check(HRESULT hr, const char* what)
 	{
 		if (FAILED(hr))
@@ -183,22 +206,62 @@ bool Renderer::CreatePipeline()
 		vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), &m_inputLayout),
 		"CreateInputLayout"))
 		return false;
-	const Vertex vertices[] = {
-		{ { 0.0f,  0.5f, 0.0f },{ 1.0f, 0.0f, 0.0f } }, // 위쪽, 빨강
-		{ { 0.5f, -0.5f, 0.0f },{ 0.0f, 1.0f, 0.0f } }, // 오른쪽 아래, 초록
-		{ { -0.5f, -0.5f, 0.0f },{ 0.0f, 0.0f, 1.0f } }, // 왼쪽 아래, 파랑
-	};
+
+	// vertex buffer 생성
 	D3D11_BUFFER_DESC bd{};
 	bd.ByteWidth = sizeof(vertices);
 	bd.Usage = D3D11_USAGE_IMMUTABLE;
 	bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 	D3D11_SUBRESOURCE_DATA init{};
 	init.pSysMem = vertices;
-	return Check(m_device->CreateBuffer(&bd, &init, &m_vertexBuffer), "CreateBuffer(vertex)");
+	if (!Check(m_device->CreateBuffer(&bd, &init, &m_vertexBuffer), "CreateBuffer(vertex)"))
+		return false;
+	
+	// index buffer 생성
+	D3D11_BUFFER_DESC ibd{};
+	ibd.ByteWidth = sizeof(indices);
+	ibd.Usage = D3D11_USAGE_IMMUTABLE;
+	ibd.BindFlags = D3D11_BIND_INDEX_BUFFER;
+	D3D11_SUBRESOURCE_DATA iinit{};
+	iinit.pSysMem = indices;
+	if (!Check(m_device->CreateBuffer(&ibd, &iinit, &m_indexBuffer), "CreateBuffer(index)"))
+		return false;
+
+	// constant buffer 생성
+	static_assert(sizeof(PerFrameCB) % 16 == 0, "cbuffer 크기가 16바이트의 배수가 아닙니다.");
+	D3D11_BUFFER_DESC cbd{};
+	cbd.ByteWidth = sizeof(PerFrameCB);
+	cbd.Usage = D3D11_USAGE_DYNAMIC;        // 매 프레임 CPU가 씀
+	cbd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	cbd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	if (!Check(m_device->CreateBuffer(&cbd, nullptr, &m_cbPerFrame), "CreateBuffer(cb)"))
+		return false;
+
+	return true;
+
 }
 
-void Renderer::Render()
+void Renderer::Render(float time)
 {
+	// wvp 행렬 계산
+	using namespace DirectX;
+	const float aspect = static_cast<float>(m_width) / static_cast<float>(m_height);
+	//XMMATRIX world = XMMatrixIdentity();
+	XMMATRIX world = XMMatrixRotationY(time);
+	XMMATRIX view = XMMatrixLookAtLH(
+		XMVectorSet(0.0f, 0.0f, -3.0f, 1.0f),   // 카메라 위치 (화면 앞쪽)
+		XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f),   // 바라볼 지점
+		XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f));  // 위쪽 방향
+	XMMATRIX proj = XMMatrixPerspectiveFovLH(XMConvertToRadians(60.0f), aspect, 0.1f, 100.0f);
+	XMMATRIX wvp = world * view * proj;
+	D3D11_MAPPED_SUBRESOURCE mapped{};
+	if (SUCCEEDED(m_context->Map(m_cbPerFrame.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped)))
+	{
+		auto* cb = static_cast<PerFrameCB*>(mapped.pData);
+		XMStoreFloat4x4(&cb->worldViewProj, XMMatrixTranspose(wvp));  // ← 전치 중요!
+		m_context->Unmap(m_cbPerFrame.Get(), 0);
+	}
+
 	const float clearColor[4] = { 0.02f, 0.02f, 0.03f, 1.0f };
 	m_context->ClearRenderTargetView(m_rtv.Get(), clearColor);
 	m_context->ClearDepthStencilView(m_dsv.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
@@ -212,13 +275,17 @@ void Renderer::Render()
 	const UINT stride = sizeof(Vertex);
 	const UINT offset = 0;
 	m_context->IASetVertexBuffers(0, 1, m_vertexBuffer.GetAddressOf(), &stride, &offset);
+	m_context->IASetIndexBuffer(m_indexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
 	m_context->IASetInputLayout(m_inputLayout.Get());
 	m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 	m_context->VSSetShader(m_vs.Get(), nullptr, 0);
 	m_context->PSSetShader(m_ps.Get(), nullptr, 0);
 
-	m_context->Draw(3, 0);
+	
+	m_context->VSSetConstantBuffers(0, 1, m_cbPerFrame.GetAddressOf());
+
+	m_context->DrawIndexed(static_cast<UINT>(std::size(indices)), 0, 0);
 }
 
 void Renderer::Present(bool vsync)

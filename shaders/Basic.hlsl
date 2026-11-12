@@ -10,10 +10,17 @@ struct PSInput
     float3 color    : COLOR;
 };
 
+cbuffer PreFrame : register(b0)
+{
+    float4x4 gWorldViewProj;
+
+};
+
+
 PSInput VSMain(VSInput input)
 {
     PSInput output;
-    output.position = float4(input.position, 1.0);
+    output.position = mul(float4(input.position, 1.0), gWorldViewProj);
     output.color    = input.color;
     return output;
 }

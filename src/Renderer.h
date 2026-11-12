@@ -3,13 +3,14 @@
 #include <dxgi1_2.h> 
 #include <wrl/client.h>
 #include <cstdint>
+#include <DirectXMath.h>
 
 class Renderer
 {
 public:
     bool Init(HWND hwnd, uint32_t width, uint32_t height);
     void Resize(uint32_t width, uint32_t height);
-    void Render();
+    void Render(float time);
     void Present(bool vsync);
 
 private:
@@ -32,6 +33,9 @@ private:
     ComPtr<ID3D11PixelShader>      m_ps;
     ComPtr<ID3D11InputLayout>      m_inputLayout;
     ComPtr<ID3D11Buffer>           m_vertexBuffer;
+    ComPtr<ID3D11Buffer>           m_cbPerFrame;
+    ComPtr<ID3D11Buffer>           m_indexBuffer;
+
 
     uint32_t m_width  = 0;
     uint32_t m_height = 0;
