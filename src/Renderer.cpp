@@ -2,11 +2,10 @@
 #include "Device.h"
 
 #include "D3DUtil.h"
-#include <d3dcompiler.h> 
 #include <DirectXMath.h>
-#include <cstdio>
 #include <filesystem>
 #include <iterator>
+#include <cstddef>
 
 using Microsoft::WRL::ComPtr;
 namespace
@@ -40,25 +39,6 @@ namespace
 		3,7,4, 3,4,0,   // 아래 (-Y)
 	};
 
-	ComPtr<ID3DBlob> CompileShader(const std::filesystem::path& file, const char* entry, const char* target)
-	{
-		UINT flags = D3DCOMPILE_ENABLE_STRICTNESS;
-#if defined(_DEBUG)
-		flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
-#endif
-		ComPtr<ID3DBlob> code, errors;
-		HRESULT hr = D3DCompileFromFile(file.c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE,
-			entry, target, flags, 0, &code, &errors);
-		if (FAILED(hr))
-		{
-			if (errors)
-				std::fprintf(stderr, "%s\n", static_cast<const char*>(errors->GetBufferPointer()));
-			else
-				std::fprintf(stderr, "Shader load failed: %ls (0x%08X)\n", file.c_str(), static_cast<unsigned>(hr));
-			return nullptr;
-		}
-		return code;
-	}
 } // namespace
 
 bool Renderer::Init(Device& device)
@@ -71,24 +51,12 @@ bool Renderer::CreatePipeline()
 {
 	ID3D11Device* dev = m_device->Get();
 	const auto shaderPath = std::filesystem::path(SHADER_DIR) / "Basic.hlsl";
-	ComPtr<ID3DBlob> vsBlob = CompileShader(shaderPath, "VSMain", "vs_5_0");
-	ComPtr<ID3DBlob> psBlob = CompileShader(shaderPath, "PSMain", "ps_5_0");
-	if (!vsBlob || !psBlob) return false;
-
-	if (!Check(dev->CreateVertexShader(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), nullptr, &m_vs),
-		"CreateVertexShader"))
-		return false;
-	if (!Check(dev->CreatePixelShader(psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, &m_ps),
-		"CreatePixelShader"))
-		return false;
 
 	const D3D11_INPUT_ELEMENT_DESC layout[] = {
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(Vertex, pos),   D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "COLOR",    0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(Vertex, color), D3D11_INPUT_PER_VERTEX_DATA, 0 },
 	};
-	if (!Check(dev->CreateInputLayout(layout, static_cast<UINT>(std::size(layout)),
-		vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), &m_inputLayout),
-		"CreateInputLayout"))
+	if (!m_shader.Init(*m_device, shaderPath, layout))
 		return false;
 
 	// vertex buffer 생성
@@ -154,11 +122,9 @@ void Renderer::Render(float time)
 	const UINT offset = 0;
 	ctx->IASetVertexBuffers(0, 1, m_vertexBuffer.GetAddressOf(), &stride, &offset);
 	ctx->IASetIndexBuffer(m_indexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
-	ctx->IASetInputLayout(m_inputLayout.Get());
 	ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-	ctx->VSSetShader(m_vs.Get(), nullptr, 0);
-	ctx->PSSetShader(m_ps.Get(), nullptr, 0);
+	m_shader.Bind(ctx);
 
 	ctx->VSSetConstantBuffers(0, 1, m_cbPerFrame.GetAddressOf());
 
