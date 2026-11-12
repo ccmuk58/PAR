@@ -1,5 +1,6 @@
 #pragma once
 #include "Shader.h"
+#include "Mesh.h"
 #include <d3d11_1.h> 
 #include <wrl/client.h>
 
@@ -18,8 +19,7 @@ private:
 
 	Device* m_device = nullptr;
 
-    Shader m_shader;
-    ComPtr<ID3D11Buffer>           m_vertexBuffer;
+    Shader                         m_shader;
+	Mesh                           m_cube;
     ComPtr<ID3D11Buffer>           m_cbPerFrame;
-    ComPtr<ID3D11Buffer>           m_indexBuffer;
 };

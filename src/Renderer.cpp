@@ -2,41 +2,17 @@
 #include "Device.h"
 
 #include "D3DUtil.h"
+#include "Vertex.h"
 #include <DirectXMath.h>
 #include <filesystem>
-#include <iterator>
 #include <cstddef>
 
 using Microsoft::WRL::ComPtr;
 namespace
 {
-	struct Vertex
-	{
-		float pos[3];
-		float color[3];
-	};
 	struct alignas(16) PerFrameCB
 	{
 		DirectX::XMFLOAT4X4 worldViewProj;
-	};
-
-	const Vertex vertices[] = {
-	{ { -0.5f,-0.5f,-0.5f },{ 0,0,0 } }, // 0
-	{ { -0.5f, 0.5f,-0.5f },{ 0,1,0 } }, // 1
-	{ { 0.5f, 0.5f,-0.5f },{ 1,1,0 } }, // 2
-	{ { 0.5f,-0.5f,-0.5f },{ 1,0,0 } }, // 3
-	{ { -0.5f,-0.5f, 0.5f },{ 0,0,1 } }, // 4
-	{ { -0.5f, 0.5f, 0.5f },{ 0,1,1 } }, // 5
-	{ { 0.5f, 0.5f, 0.5f },{ 1,1,1 } }, // 6
-	{ { 0.5f,-0.5f, 0.5f },{ 1,0,1 } }, // 7
-	};
-	const uint16_t indices[] = {
-		0,1,2, 0,2,3,   // 앞 (-Z)
-		7,6,5, 7,5,4,   // 뒤 (+Z)
-		4,5,1, 4,1,0,   // 왼 (-X)
-		3,2,6, 3,6,7,   // 오른 (+X)
-		1,5,6, 1,6,2,   // 위 (+Y)
-		3,7,4, 3,4,0,   // 아래 (-Y)
 	};
 
 } // namespace
@@ -56,27 +32,11 @@ bool Renderer::CreatePipeline()
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(Vertex, pos),   D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "COLOR",    0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(Vertex, color), D3D11_INPUT_PER_VERTEX_DATA, 0 },
 	};
+	// shader 초기화
 	if (!m_shader.Init(*m_device, shaderPath, layout))
 		return false;
-
-	// vertex buffer 생성
-	D3D11_BUFFER_DESC bd{};
-	bd.ByteWidth = sizeof(vertices);
-	bd.Usage = D3D11_USAGE_IMMUTABLE;
-	bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	D3D11_SUBRESOURCE_DATA init{};
-	init.pSysMem = vertices;
-	if (!Check(dev->CreateBuffer(&bd, &init, &m_vertexBuffer), "CreateBuffer(vertex)"))
-		return false;
-	
-	// index buffer 생성
-	D3D11_BUFFER_DESC ibd{};
-	ibd.ByteWidth = sizeof(indices);
-	ibd.Usage = D3D11_USAGE_IMMUTABLE;
-	ibd.BindFlags = D3D11_BIND_INDEX_BUFFER;
-	D3D11_SUBRESOURCE_DATA iinit{};
-	iinit.pSysMem = indices;
-	if (!Check(dev->CreateBuffer(&ibd, &iinit, &m_indexBuffer), "CreateBuffer(index)"))
+	// mesh 초기화
+	if (!m_cube.InitCube(*m_device))
 		return false;
 
 	// constant buffer 생성
@@ -90,7 +50,6 @@ bool Renderer::CreatePipeline()
 		return false;
 
 	return true;
-
 }
 
 void Renderer::Render(float time)
@@ -118,16 +77,9 @@ void Renderer::Render(float time)
 	const float clearColor[4] = { 0.02f, 0.02f, 0.03f, 1.0f };
 	m_device->BeginFrame(clearColor);
 
-	const UINT stride = sizeof(Vertex);
-	const UINT offset = 0;
-	ctx->IASetVertexBuffers(0, 1, m_vertexBuffer.GetAddressOf(), &stride, &offset);
-	ctx->IASetIndexBuffer(m_indexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
-	ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
 	m_shader.Bind(ctx);
-
+	m_cube.Bind(ctx);
 	ctx->VSSetConstantBuffers(0, 1, m_cbPerFrame.GetAddressOf());
-
-	ctx->DrawIndexed(static_cast<UINT>(std::size(indices)), 0, 0);
+	ctx->DrawIndexed(m_cube.IndexCount(), 0, 0);
 }
 
