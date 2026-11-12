@@ -1,6 +1,7 @@
 #include "Renderer.h"
 #include "Device.h"
 
+#include "D3DUtil.h"
 #include <d3dcompiler.h> 
 #include <DirectXMath.h>
 #include <cstdio>
@@ -39,15 +40,6 @@ namespace
 		3,7,4, 3,4,0,   // 아래 (-Y)
 	};
 
-	bool Check(HRESULT hr, const char* what)
-	{
-		if (FAILED(hr))
-		{
-			std::fprintf(stderr, "[D3D11] %s failed (0x%08X)\n", what, static_cast<unsigned>(hr));
-			return false;
-		}
-		return true;
-	}
 	ComPtr<ID3DBlob> CompileShader(const std::filesystem::path& file, const char* entry, const char* target)
 	{
 		UINT flags = D3DCOMPILE_ENABLE_STRICTNESS;

@@ -1,22 +1,11 @@
 #include "Device.h"
 
+#include "D3DUtil.h"
 #include <d3d11sdklayers.h> 
 #include <cstdio>
 #include <iterator>
 using Microsoft::WRL::ComPtr;
 
-namespace
-{
-	bool Check(HRESULT hr, const char* what)
-	{
-		if (FAILED(hr))
-		{
-			std::fprintf(stderr, "[D3D11] %s failed (0x%08X)\n", what, static_cast<unsigned>(hr));
-			return false;
-		}
-		return true;
-	}
-} // namespace
 
 bool Device::Init(HWND hwnd, uint32_t width, uint32_t height)
 {
