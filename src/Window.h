@@ -8,7 +8,7 @@ struct GLFWwindow;
 // GLFW 키 코드를 헤더 밖으로 노출하지 않기 위한 키 목록
 enum class Key
 {
-    W, A, S, D, Escape,
+    W, A, S, D, Space, LeftShift, Escape,
 };
 
 enum class MouseButton

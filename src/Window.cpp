@@ -88,6 +88,8 @@ bool Window::IsKeyDown(Key key) const
     case Key::A: glfwKey = GLFW_KEY_A; break;
     case Key::S: glfwKey = GLFW_KEY_S; break;
     case Key::D: glfwKey = GLFW_KEY_D; break;
+    case Key::Space: glfwKey = GLFW_KEY_SPACE; break;
+    case Key::LeftShift: glfwKey = GLFW_KEY_LEFT_SHIFT; break;
     case Key::Escape: glfwKey = GLFW_KEY_ESCAPE; break;
     }
     if (glfwKey == GLFW_KEY_UNKNOWN)
