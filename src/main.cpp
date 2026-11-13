@@ -1,72 +1,41 @@
-#define GLFW_INCLUDE_NONE
-#include <GLFW/glfw3.h>
-#define GLFW_EXPOSE_NATIVE_WIN32
-#include <GLFW/glfw3native.h>
-#include <cstdio>
+#include "Window.h"
 #include "Device.h"
 #include "Renderer.h"
 
-
-// 윈도우 크기 변경 시 호출되는 콜백
-static void OnFramebufferResize(GLFWwindow* window, int width, int height)
-{
-    auto* device = static_cast<Device*>(glfwGetWindowUserPointer(window));
-    if (device)
-        device->Resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
-}
-
 int main()
 {
-    glfwSetErrorCallback([](int code, const char* desc) {
-        std::fprintf(stderr, "[GLFW %d] %s\n", code, desc);
+    // 스왑체인이 HWND에 묶여 있어서, Window가 Device보다 오래 살아야 한다
+    Window   window;
+    Device   device;
+    Renderer renderer;
+
+    if (!window.Init(1280, 720, "PAR"))
+        return -1;
+    if (!device.Init(window.Hwnd(), window.Width(), window.Height()))
+        return -1;
+    if (!renderer.Init(device))
+        return -1;
+
+    window.SetResizeCallback([&device](uint32_t width, uint32_t height) {
+        device.Resize(width, height);
     });
 
-    if (!glfwInit())
-        return -1;
-
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-
-    GLFWwindow* window = glfwCreateWindow(1280, 720, "PAR", nullptr, nullptr);
-    if (!window)
+    // ---------------- 메인 루프 ----------------
+    while (!window.ShouldClose())
     {
-        glfwTerminate();
-        return -1;
+        // OS 이벤트 처리
+        window.PollEvents();
+
+        // 최소화 중 렌더링 미처리
+        if (window.IsMinimized())
+        {
+            window.WaitEvents();
+            continue;
+        }
+
+        renderer.Render(static_cast<float>(window.Time()));
+        device.Present(true);
     }
 
-    {
-        Device device;
-        Renderer renderer;
-
-        int fbWidth = 0, fbHeight = 0;
-        glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
-
-        if (device.Init(glfwGetWin32Window(window),
-            static_cast<uint32_t>(fbWidth), static_cast<uint32_t>(fbHeight)) && renderer.Init(device))
-        {
-            glfwSetWindowUserPointer(window, &device);
-            glfwSetFramebufferSizeCallback(window, OnFramebufferResize);
-
-            // ---------------- 메인 루프 ----------------
-            while (!glfwWindowShouldClose(window))
-            {
-                // OS 이벤트 처리
-                glfwPollEvents();
-
-                if (glfwGetWindowAttrib(window, GLFW_ICONIFIED))
-                {
-                    glfwWaitEvents();
-                    continue;
-                }
-
-                renderer.Render(static_cast<float>(glfwGetTime()));
-                device.Present(true);
-            }
-
-            glfwSetWindowUserPointer(window, nullptr);
-        } 
-	} // Renderer 소멸, Device 소멸
-
-    glfwDestroyWindow(window);
-    glfwTerminate();
     return 0;
-}
+}   // Renderer -> Device -> Window 순으로 소멸
