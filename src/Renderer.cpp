@@ -1,6 +1,7 @@
 #include "Renderer.h"
 #include "Device.h"
 #include "Camera.h"
+#include "Scene.h"
 
 #include "D3DUtil.h"
 #include "Vertex.h"
@@ -33,11 +34,6 @@ namespace
 
 	static_assert(sizeof(PerFrameCB) % 16 == 0, "cbuffer 크기가 16바이트의 배수가 아닙니다.");
 	static_assert(sizeof(PerObjectCB) % 16 == 0, "cbuffer 크기가 16바이트의 배수가 아닙니다.");
-
-	// 빛이 진행하는 방향
-	const DirectX::XMFLOAT3 lightDir{ 0.5f, -0.7f, 0.6f };
-	const DirectX::XMFLOAT3 lightColor{ 1.0f, 1.0f, 1.0f };
-	const DirectX::XMFLOAT3 ambientColor{ 0.03f, 0.03f, 0.04f };
 
 	bool CreateConstantBuffer(ID3D11Device* dev, UINT size, ID3D11Buffer** buffer)
 	{
@@ -81,14 +77,6 @@ bool Renderer::CreatePipeline()
 	// shader 초기화
 	if (!m_shader.Init(*m_device, shaderPath, layout))
 		return false;
-	// mesh 로드
-	const auto meshPath = std::filesystem::path(ASSET_DIR) / "models" / "teapot.obj";
-	if (!m_mesh.Load(*m_device, meshPath))
-		return false;
-	// texture 로드
-	const auto texturePath = std::filesystem::path(ASSET_DIR) / "textures" / "checker.png";
-	if (!m_albedoMap.Load(*m_device, texturePath))
-		return false;
 
 	// sampler 생성
 	D3D11_SAMPLER_DESC samplerDesc{};
@@ -111,7 +99,7 @@ bool Renderer::CreatePipeline()
 	return true;
 }
 
-void Renderer::Render(const Camera& camera, float time)
+void Renderer::Render(const Scene& scene, const Camera& camera)
 {
 	ID3D11DeviceContext* ctx = m_device->Context();
 	using namespace DirectX;
@@ -120,26 +108,29 @@ void Renderer::Render(const Camera& camera, float time)
 	PerFrameCB frame{};
 	XMStoreFloat4x4(&frame.viewProj, XMMatrixTranspose(camera.ViewProj()));
 	frame.cameraPos = camera.Position();
-	frame.lightDir = lightDir;
-	frame.lightColor = lightColor;
-	frame.ambientColor = ambientColor;
+	frame.lightDir = scene.Light().direction;
+	frame.lightColor = scene.Light().color;
+	frame.ambientColor = scene.AmbientColor();
 	UpdateConstantBuffer(ctx, m_cbPerFrame.Get(), frame);
-
-	// per object constant buffer
-	const XMMATRIX world = XMMatrixRotationY(time);
-	const XMMATRIX worldInvTranspose = XMMatrixTranspose(XMMatrixInverse(nullptr, world));
-	PerObjectCB object{};
-	XMStoreFloat4x4(&object.world, XMMatrixTranspose(world));
-	XMStoreFloat4x4(&object.worldInvTranspose, XMMatrixTranspose(worldInvTranspose));
-	UpdateConstantBuffer(ctx, m_cbPerObject.Get(), object);
 
 	ID3D11Buffer* const cbs[] = { m_cbPerFrame.Get(), m_cbPerObject.Get() };
 	m_shader.Bind(ctx);
-	m_mesh.Bind(ctx);
-	m_albedoMap.Bind(ctx, 0);
 	ctx->PSSetSamplers(0, 1, m_sampler.GetAddressOf());
 	ctx->VSSetConstantBuffers(0, 2, cbs);
 	ctx->PSSetConstantBuffers(0, 2, cbs);
-	ctx->DrawIndexed(m_mesh.IndexCount(), 0, 0);
-}
 
+	for (const SceneObject& sceneObject : scene.Objects())
+	{
+		// per object constant buffer
+		const XMMATRIX world = XMLoadFloat4x4(&sceneObject.world);
+		const XMMATRIX worldInvTranspose = XMMatrixTranspose(XMMatrixInverse(nullptr, world));
+		PerObjectCB object{};
+		XMStoreFloat4x4(&object.world, XMMatrixTranspose(world));
+		XMStoreFloat4x4(&object.worldInvTranspose, XMMatrixTranspose(worldInvTranspose));
+		UpdateConstantBuffer(ctx, m_cbPerObject.Get(), object);
+
+		sceneObject.mesh.Bind(ctx);
+		sceneObject.albedoMap.Bind(ctx, 0);
+		ctx->DrawIndexed(sceneObject.mesh.IndexCount(), 0, 0);
+	}
+}

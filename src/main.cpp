@@ -1,6 +1,7 @@
 #include "Window.h"
 #include "Device.h"
 #include "Renderer.h"
+#include "Scene.h"
 #include "Camera.h"
 #include "CameraController.h"
 
@@ -10,6 +11,7 @@ int main()
     Window   window;
     Device   device;
     Renderer renderer;
+    Scene    scene;
     Camera camera;
     CameraController cameraController;
 
@@ -18,6 +20,8 @@ int main()
     if (!device.Init(window.Hwnd(), window.Width(), window.Height()))
         return -1;
     if (!renderer.Init(device))
+        return -1;
+    if (!scene.Init(device))
         return -1;
 
 	// 카메라 초기화
@@ -60,12 +64,13 @@ int main()
         lastTime = now;
 
         cameraController.Update(camera, window, deltaTime);
+        scene.Update(static_cast<float>(now));
 
         const float clearColor[4] = { 0.02f, 0.02f, 0.03f, 1.0f };
         device.BeginFrame(clearColor);
-        renderer.Render(camera, static_cast<float>(now));
+        renderer.Render(scene, camera);
         device.Present(true);
     }
 
     return 0;
-}   // Renderer -> Device -> Window 순으로 소멸
+}   // Scene -> Renderer -> Device -> Window 순으로 소멸
