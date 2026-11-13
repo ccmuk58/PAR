@@ -10,7 +10,7 @@ struct PSInput
     float3 color    : COLOR;
 };
 
-cbuffer PreFrame : register(b0)
+cbuffer PerFrame : register(b0)
 {
     float4x4 gWorldViewProj;
 
