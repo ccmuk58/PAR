@@ -51,3 +51,8 @@ bool Gui::WantsMouse() const
 {
     return ImGui::GetIO().WantCaptureMouse;
 }
+
+bool Gui::WantsTextInput() const
+{
+    return ImGui::GetIO().WantTextInput;
+}

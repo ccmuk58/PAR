@@ -18,6 +18,7 @@ public:
     void Render();
 
     bool WantsMouse() const;
+    bool WantsTextInput() const;
 
 private:
     Device* m_device = nullptr;

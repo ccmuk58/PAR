@@ -37,6 +37,7 @@ public:
     void PollEvents();
     void WaitEvents();
     bool ShouldClose() const;
+    void RequestClose();
     bool IsMinimized() const;
     double Time() const;
 

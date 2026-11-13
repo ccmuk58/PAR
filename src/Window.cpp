@@ -64,6 +64,11 @@ bool Window::ShouldClose() const
     return glfwWindowShouldClose(m_window) != 0;
 }
 
+void Window::RequestClose()
+{
+    glfwSetWindowShouldClose(m_window, GLFW_TRUE);
+}
+
 bool Window::IsMinimized() const
 {
     return glfwGetWindowAttrib(m_window, GLFW_ICONIFIED) != 0;

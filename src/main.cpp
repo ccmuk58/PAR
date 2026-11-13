@@ -16,7 +16,6 @@ namespace
 
         ImGui::Begin("PAR");
         ImGui::Text("%.1f FPS (%.2f ms)", io.Framerate, 1000.0f / io.Framerate);
-        ImGui::TextDisabled("ESC: release cursor / click viewport: capture");
 
         ImGui::SeparatorText("Light");
         DirectionalLight& light = scene.Light();
@@ -80,6 +79,7 @@ int main()
 
     // ---------------- 메인 루프 ----------------
     double lastTime = window.Time();
+    bool escapeWasDown = false;
     while (!window.ShouldClose())
     {
         // OS 이벤트 처리
@@ -95,11 +95,18 @@ int main()
 
         gui.BeginFrame();
 
-        // ESC: 커서 해제, 뷰포트 클릭: 커서 고정
-        if (window.IsKeyDown(Key::Escape))
-            window.SetCursorCaptured(false);
-        else if (window.IsMouseButtonDown(MouseButton::Left) && !gui.WantsMouse())
+        // ESC: 커서 해제 (이미 해제 상태면 종료), 뷰포트 클릭: 커서 고정
+        const bool escapeDown = window.IsKeyDown(Key::Escape);
+        if (escapeDown && !escapeWasDown && !gui.WantsTextInput())
+        {
+            if (window.IsCursorCaptured())
+                window.SetCursorCaptured(false);
+            else
+                window.RequestClose();
+        }
+        else if (!escapeDown && window.IsMouseButtonDown(MouseButton::Left) && !gui.WantsMouse())
             window.SetCursorCaptured(true);
+        escapeWasDown = escapeDown;
 
         const double now = window.Time();
         const float deltaTime = static_cast<float>(now - lastTime);
