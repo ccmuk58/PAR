@@ -74,9 +74,6 @@ void Renderer::Render(float time)
 		ctx->Unmap(m_cbPerFrame.Get(), 0);
 	}
 
-	const float clearColor[4] = { 0.02f, 0.02f, 0.03f, 1.0f };
-	m_device->BeginFrame(clearColor);
-
 	m_shader.Bind(ctx);
 	m_cube.Bind(ctx);
 	ctx->VSSetConstantBuffers(0, 1, m_cbPerFrame.GetAddressOf());

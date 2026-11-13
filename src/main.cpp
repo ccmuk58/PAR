@@ -33,6 +33,8 @@ int main()
             continue;
         }
 
+        const float clearColor[4] = { 0.02f, 0.02f, 0.03f, 1.0f };
+        device.BeginFrame(clearColor);
         renderer.Render(static_cast<float>(window.Time()));
         device.Present(true);
     }
