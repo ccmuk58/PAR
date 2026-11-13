@@ -85,6 +85,22 @@ bool Renderer::CreatePipeline()
 	const auto meshPath = std::filesystem::path(ASSET_DIR) / "models" / "teapot.obj";
 	if (!m_mesh.Load(*m_device, meshPath))
 		return false;
+	// texture 로드
+	const auto texturePath = std::filesystem::path(ASSET_DIR) / "textures" / "checker.png";
+	if (!m_albedoMap.Load(*m_device, texturePath))
+		return false;
+
+	// sampler 생성
+	D3D11_SAMPLER_DESC samplerDesc{};
+	samplerDesc.Filter = D3D11_FILTER_ANISOTROPIC;
+	samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+	samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+	samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+	samplerDesc.MaxAnisotropy = 8;
+	samplerDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+	samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+	if (!Check(dev->CreateSamplerState(&samplerDesc, &m_sampler), "CreateSamplerState"))
+		return false;
 
 	// constant buffer 생성
 	if (!CreateConstantBuffer(dev, sizeof(PerFrameCB), &m_cbPerFrame))
@@ -120,6 +136,8 @@ void Renderer::Render(const Camera& camera, float time)
 	ID3D11Buffer* const cbs[] = { m_cbPerFrame.Get(), m_cbPerObject.Get() };
 	m_shader.Bind(ctx);
 	m_mesh.Bind(ctx);
+	m_albedoMap.Bind(ctx, 0);
+	ctx->PSSetSamplers(0, 1, m_sampler.GetAddressOf());
 	ctx->VSSetConstantBuffers(0, 2, cbs);
 	ctx->PSSetConstantBuffers(0, 2, cbs);
 	ctx->DrawIndexed(m_mesh.IndexCount(), 0, 0);

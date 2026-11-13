@@ -29,7 +29,7 @@ add_executable(PAR ${SOURCES})
 
 target_include_directories(PAR PRIVATE src)
 
-target_link_libraries(PAR PRIVATE glfw d3d11 dxgi d3dcompiler dxguid)
+target_link_libraries(PAR PRIVATE glfw d3d11 dxgi d3dcompiler dxguid windowscodecs ole32)
 
 target_compile_definitions(PAR PRIVATE
     UNICODE _UNICODE NOMINMAX WIN32_LEAN_AND_MEAN

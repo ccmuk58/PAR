@@ -1,7 +1,8 @@
 #pragma once
 #include "Shader.h"
 #include "Mesh.h"
-#include <d3d11_1.h> 
+#include "Texture.h"
+#include <d3d11_1.h>
 #include <wrl/client.h>
 
 class Device;
@@ -22,6 +23,8 @@ private:
 
     Shader                         m_shader;
 	Mesh                           m_mesh;
+    Texture                        m_albedoMap;
+    ComPtr<ID3D11SamplerState>     m_sampler;
     ComPtr<ID3D11Buffer>           m_cbPerFrame;
     ComPtr<ID3D11Buffer>           m_cbPerObject;
 };
