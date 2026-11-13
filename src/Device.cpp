@@ -23,6 +23,7 @@ void Device::Resize(uint32_t width, uint32_t height)
 
 	m_context->OMSetRenderTargets(0, nullptr, nullptr);
 	m_rtv.Reset();
+	m_rtvUI.Reset();
 	m_dsv.Reset();
 	m_context->Flush();
 
@@ -40,6 +41,12 @@ void Device::BeginFrame(const float clearColor[4])
 
 	m_context->ClearRenderTargetView(m_rtv.Get(), clearColor);
 	m_context->ClearDepthStencilView(m_dsv.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+}
+
+void Device::BeginUI()
+{
+	ID3D11RenderTargetView* rtvs[] = { m_rtvUI.Get() };
+	m_context->OMSetRenderTargets(1, rtvs, nullptr);
 }
 
 void Device::Present(bool vsync)
@@ -118,6 +125,10 @@ bool Device::CreateBackBufferViews()
 	rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
 	rtvDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
 	if (!Check(m_device->CreateRenderTargetView(backBuffer.Get(), &rtvDesc, &m_rtv), "CreateRenderTargetView"))
+		return false;
+
+	rtvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	if (!Check(m_device->CreateRenderTargetView(backBuffer.Get(), &rtvDesc, &m_rtvUI), "CreateRenderTargetView(UI)"))
 		return false;
 
 	D3D11_TEXTURE2D_DESC depthDesc{};

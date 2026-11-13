@@ -11,6 +11,8 @@ public:
 
     void SetMoveSpeed(float speed) { m_moveSpeed = speed; }
     void SetMouseSensitivity(float sensitivity) { m_mouseSensitivity = sensitivity; }
+    float MoveSpeed() const { return m_moveSpeed; }
+    float MouseSensitivity() const { return m_mouseSensitivity; }
 
 private:
     float m_moveSpeed = 3.0f;           // 초당 이동 거리

@@ -34,6 +34,9 @@ public:
     const DirectionalLight& Light() const { return m_light; }
     const DirectX::XMFLOAT3& AmbientColor() const { return m_ambientColor; }
 
+    DirectionalLight& Light() { return m_light; }
+    DirectX::XMFLOAT3& AmbientColor() { return m_ambientColor; }
+
 private:
     std::vector<SceneObject> m_objects;
     DirectionalLight         m_light;

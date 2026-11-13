@@ -23,13 +23,30 @@ FetchContent_Declare(glfw
     GIT_SHALLOW    TRUE)
 FetchContent_MakeAvailable(glfw)
 
+FetchContent_Declare(imgui
+    GIT_REPOSITORY https://github.com/ocornut/imgui.git
+    GIT_TAG        v1.92.9b
+    GIT_SHALLOW    TRUE)
+FetchContent_MakeAvailable(imgui)
+
+add_library(imgui STATIC
+    ${imgui_SOURCE_DIR}/imgui.cpp
+    ${imgui_SOURCE_DIR}/imgui_demo.cpp
+    ${imgui_SOURCE_DIR}/imgui_draw.cpp
+    ${imgui_SOURCE_DIR}/imgui_tables.cpp
+    ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_dx11.cpp)
+target_include_directories(imgui PUBLIC ${imgui_SOURCE_DIR} ${imgui_SOURCE_DIR}/backends)
+target_link_libraries(imgui PUBLIC glfw d3d11 d3dcompiler)
+
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS src/*.cpp src/*.h)
 
 add_executable(PAR ${SOURCES})
 
 target_include_directories(PAR PRIVATE src)
 
-target_link_libraries(PAR PRIVATE glfw d3d11 dxgi d3dcompiler dxguid windowscodecs ole32)
+target_link_libraries(PAR PRIVATE glfw imgui d3d11 dxgi d3dcompiler dxguid windowscodecs ole32)
 
 target_compile_definitions(PAR PRIVATE
     UNICODE _UNICODE NOMINMAX WIN32_LEAN_AND_MEAN
@@ -38,4 +55,5 @@ target_compile_definitions(PAR PRIVATE
 
 if (MSVC)
     target_compile_options(PAR PRIVATE /W4 /utf-8)
+    target_compile_options(imgui PRIVATE /utf-8)
 endif()

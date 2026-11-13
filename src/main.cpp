@@ -4,6 +4,43 @@
 #include "Scene.h"
 #include "Camera.h"
 #include "CameraController.h"
+#include "Gui.h"
+
+#include <imgui.h>
+
+namespace
+{
+    void DrawDebugPanel(Scene& scene, CameraController& cameraController)
+    {
+        const ImGuiIO& io = ImGui::GetIO();
+
+        ImGui::Begin("PAR");
+        ImGui::Text("%.1f FPS (%.2f ms)", io.Framerate, 1000.0f / io.Framerate);
+        ImGui::TextDisabled("ESC: release cursor / click viewport: capture");
+
+        ImGui::SeparatorText("Light");
+        DirectionalLight& light = scene.Light();
+        DirectX::XMFLOAT3 direction = light.direction;
+        if (ImGui::DragFloat3("Direction", &direction.x, 0.01f, -1.0f, 1.0f))
+        {
+            const float lengthSq = direction.x * direction.x + direction.y * direction.y + direction.z * direction.z;
+            if (lengthSq > 1e-6f)
+                light.direction = direction;
+        }
+        ImGui::ColorEdit3("Color", &light.color.x);
+        ImGui::ColorEdit3("Ambient", &scene.AmbientColor().x);
+
+        ImGui::SeparatorText("Camera");
+        float moveSpeed = cameraController.MoveSpeed();
+        if (ImGui::DragFloat("Move Speed", &moveSpeed, 0.05f, 0.1f, 50.0f))
+            cameraController.SetMoveSpeed(moveSpeed);
+        float sensitivity = cameraController.MouseSensitivity();
+        if (ImGui::DragFloat("Sensitivity", &sensitivity, 0.0001f, 0.0001f, 0.01f, "%.4f"))
+            cameraController.SetMouseSensitivity(sensitivity);
+
+        ImGui::End();
+    }
+}
 
 int main()
 {
@@ -12,6 +49,7 @@ int main()
     Device   device;
     Renderer renderer;
     Scene    scene;
+    Gui      gui;
     Camera camera;
     CameraController cameraController;
 
@@ -22,6 +60,8 @@ int main()
     if (!renderer.Init(device))
         return -1;
     if (!scene.Init(device))
+        return -1;
+    if (!gui.Init(window, device))
         return -1;
 
 	// 카메라 초기화
@@ -53,10 +93,12 @@ int main()
             continue;
         }
 
-        // ESC: 커서 해제, 창 클릭: 커서 고정
+        gui.BeginFrame();
+
+        // ESC: 커서 해제, 뷰포트 클릭: 커서 고정
         if (window.IsKeyDown(Key::Escape))
             window.SetCursorCaptured(false);
-        else if (window.IsMouseButtonDown(MouseButton::Left))
+        else if (window.IsMouseButtonDown(MouseButton::Left) && !gui.WantsMouse())
             window.SetCursorCaptured(true);
 
         const double now = window.Time();
@@ -65,12 +107,14 @@ int main()
 
         cameraController.Update(camera, window, deltaTime);
         scene.Update(static_cast<float>(now));
+        DrawDebugPanel(scene, cameraController);
 
         const float clearColor[4] = { 0.02f, 0.02f, 0.03f, 1.0f };
         device.BeginFrame(clearColor);
         renderer.Render(scene, camera);
+        gui.Render();
         device.Present(true);
     }
 
     return 0;
-}   // Scene -> Renderer -> Device -> Window 순으로 소멸
+}   // Gui -> Scene -> Renderer -> Device -> Window 순으로 소멸

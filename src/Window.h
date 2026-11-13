@@ -54,6 +54,8 @@ public:
     uint32_t Width() const;
     uint32_t Height() const;
 
+    GLFWwindow* Handle() const { return m_window; }
+
     void SetResizeCallback(std::function<void(uint32_t, uint32_t)> callback);
 
 private:

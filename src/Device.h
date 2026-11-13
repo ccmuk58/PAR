@@ -10,6 +10,7 @@ public:
     bool Init(HWND hwnd, uint32_t width, uint32_t height);
     void Resize(uint32_t width, uint32_t height);
     void BeginFrame(const float clearColor[4]);
+    void BeginUI();
     void Present(bool vsync);
 
     ID3D11Device* Get() const { return m_device.Get(); }
@@ -27,6 +28,7 @@ private:
     ComPtr<ID3D11DeviceContext>    m_context;
     ComPtr<IDXGISwapChain1>        m_swapChain;
     ComPtr<ID3D11RenderTargetView> m_rtv;
+    ComPtr<ID3D11RenderTargetView> m_rtvUI;
     ComPtr<ID3D11DepthStencilView> m_dsv;
 
     uint32_t m_width = 0;
