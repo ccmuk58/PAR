@@ -42,17 +42,21 @@ bool Window::Init(int width, int height, const char* title)
             self->m_onResize(static_cast<uint32_t>(w), static_cast<uint32_t>(h));
     });
 
+    glfwGetCursorPos(m_window, &m_cursorX, &m_cursorY);
+
     return true;
 }
 
 void Window::PollEvents()
 {
     glfwPollEvents();
+    UpdateMouseDelta();
 }
 
 void Window::WaitEvents()
 {
     glfwWaitEvents();
+    UpdateMouseDelta();
 }
 
 bool Window::ShouldClose() const
@@ -68,6 +72,52 @@ bool Window::IsMinimized() const
 double Window::Time() const
 {
     return glfwGetTime();
+}   
+
+bool Window::IsKeyDown(Key key) const
+{
+    int glfwKey = GLFW_KEY_UNKNOWN;
+    switch (key)
+    {
+    case Key::W: glfwKey = GLFW_KEY_W; break;
+    case Key::A: glfwKey = GLFW_KEY_A; break;
+    case Key::S: glfwKey = GLFW_KEY_S; break;
+    case Key::D: glfwKey = GLFW_KEY_D; break;
+    case Key::Escape: glfwKey = GLFW_KEY_ESCAPE; break;
+    }
+    if (glfwKey == GLFW_KEY_UNKNOWN)
+        return false;
+
+    return glfwGetKey(m_window, glfwKey) == GLFW_PRESS;
+}
+
+bool Window::IsMouseButtonDown(MouseButton button) const
+{
+    const int glfwButton = (button == MouseButton::Left) ? GLFW_MOUSE_BUTTON_LEFT : GLFW_MOUSE_BUTTON_RIGHT;
+    return glfwGetMouseButton(m_window, glfwButton) == GLFW_PRESS;
+}
+
+void Window::SetCursorCaptured(bool captured)
+{
+    if (captured == m_cursorCaptured)
+        return;
+    m_cursorCaptured = captured;
+
+    glfwSetInputMode(m_window, GLFW_CURSOR, captured ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+    if (glfwRawMouseMotionSupported())
+        glfwSetInputMode(m_window, GLFW_RAW_MOUSE_MOTION, captured ? GLFW_TRUE : GLFW_FALSE);
+
+    glfwGetCursorPos(m_window, &m_cursorX, &m_cursorY);
+    m_mouseDelta = {};
+}
+
+void Window::UpdateMouseDelta()
+{
+    double x = 0.0, y = 0.0;
+    glfwGetCursorPos(m_window, &x, &y);
+    m_mouseDelta = { static_cast<float>(x - m_cursorX), static_cast<float>(y - m_cursorY) };
+    m_cursorX = x;
+    m_cursorY = y;
 }
 
 HWND Window::Hwnd() const

@@ -2,14 +2,16 @@
 #include "Device.h"
 #include "Renderer.h"
 #include "Camera.h"
+#include "CameraController.h"
 
 int main()
 {
-    // 스왑체인이 HWND에 묶여 있어서, Window가 Device보다 오래 살아야 한다
+    // 스왑체인이 HWND에 묶여 있어서, Window가 Device보다 오래 살아야 함
     Window   window;
     Device   device;
     Renderer renderer;
     Camera camera;
+    CameraController cameraController;
 
     if (!window.Init(1280, 720, "PAR"))
         return -1;
@@ -24,12 +26,15 @@ int main()
     camera.SetPerspective(DirectX::XMConvertToRadians(60.0f), 0.1f, 100.0f);
     camera.SetAspectRatio(device.AspectRatio());
 
+    window.SetCursorCaptured(true);
+
     window.SetResizeCallback([&device, &camera](uint32_t width, uint32_t height) {
         device.Resize(width, height);
-        camera.SetAspectRatio(device.AspectRatio());   // 0 크기는 Device가 걸러준다
+        camera.SetAspectRatio(device.AspectRatio());
     });
 
     // ---------------- 메인 루프 ----------------
+    double lastTime = window.Time();
     while (!window.ShouldClose())
     {
         // OS 이벤트 처리
@@ -39,12 +44,25 @@ int main()
         if (window.IsMinimized())
         {
             window.WaitEvents();
+            lastTime = window.Time();   // 대기 시간 deltaTime 미반영
             continue;
         }
 
+        // ESC: 커서 해제, 창 클릭: 커서 고정
+        if (window.IsKeyDown(Key::Escape))
+            window.SetCursorCaptured(false);
+        else if (window.IsMouseButtonDown(MouseButton::Left))
+            window.SetCursorCaptured(true);
+
+        const double now = window.Time();
+        const float deltaTime = static_cast<float>(now - lastTime);
+        lastTime = now;
+
+        cameraController.Update(camera, window, deltaTime);
+
         const float clearColor[4] = { 0.02f, 0.02f, 0.03f, 1.0f };
         device.BeginFrame(clearColor);
-        renderer.Render(camera, static_cast<float>(window.Time()));
+        renderer.Render(camera, static_cast<float>(now));
         device.Present(true);
     }
 
