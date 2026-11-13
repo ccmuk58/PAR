@@ -5,12 +5,13 @@
 #include <wrl/client.h>
 
 class Device;
+class Camera;
 
 class Renderer
 {
 public:
 	bool Init(Device& device);
-    void Render(float time);
+    void Render(const Camera& camera, float time);
 
 private:
     bool CreatePipeline();

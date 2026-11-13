@@ -1,5 +1,6 @@
 #include "Renderer.h"
 #include "Device.h"
+#include "Camera.h"
 
 #include "D3DUtil.h"
 #include "Vertex.h"
@@ -52,19 +53,13 @@ bool Renderer::CreatePipeline()
 	return true;
 }
 
-void Renderer::Render(float time)
+void Renderer::Render(const Camera& camera, float time)
 {
 	ID3D11DeviceContext* ctx = m_device->Context();
 	// wvp 행렬 계산
 	using namespace DirectX;
-	const float aspect = m_device->AspectRatio();
 	XMMATRIX world = XMMatrixRotationY(time);
-	XMMATRIX view = XMMatrixLookAtLH(
-		XMVectorSet(0.0f, 0.0f, -3.0f, 1.0f),   // 카메라 위치
-		XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f),   // 바라볼 지점
-		XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f));  // 위쪽 방향
-	XMMATRIX proj = XMMatrixPerspectiveFovLH(XMConvertToRadians(60.0f), aspect, 0.1f, 100.0f);
-	XMMATRIX wvp = world * view * proj;
+	XMMATRIX wvp = world * camera.ViewProj();
 
 	D3D11_MAPPED_SUBRESOURCE mapped{};
 	if (SUCCEEDED(ctx->Map(m_cbPerFrame.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped)))

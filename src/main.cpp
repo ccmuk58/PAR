@@ -1,6 +1,7 @@
 #include "Window.h"
 #include "Device.h"
 #include "Renderer.h"
+#include "Camera.h"
 
 int main()
 {
@@ -8,6 +9,7 @@ int main()
     Window   window;
     Device   device;
     Renderer renderer;
+    Camera camera;
 
     if (!window.Init(1280, 720, "PAR"))
         return -1;
@@ -16,8 +18,15 @@ int main()
     if (!renderer.Init(device))
         return -1;
 
-    window.SetResizeCallback([&device](uint32_t width, uint32_t height) {
+	// 카메라 초기화
+    camera.SetPosition({ 0.0f, 0.0f, -3.0f });
+    camera.LookAt({ 0.0f, 0.0f, 0.0f });
+    camera.SetPerspective(DirectX::XMConvertToRadians(60.0f), 0.1f, 100.0f);
+    camera.SetAspectRatio(device.AspectRatio());
+
+    window.SetResizeCallback([&device, &camera](uint32_t width, uint32_t height) {
         device.Resize(width, height);
+        camera.SetAspectRatio(device.AspectRatio());   // 0 크기는 Device가 걸러준다
     });
 
     // ---------------- 메인 루프 ----------------
@@ -35,7 +44,7 @@ int main()
 
         const float clearColor[4] = { 0.02f, 0.02f, 0.03f, 1.0f };
         device.BeginFrame(clearColor);
-        renderer.Render(static_cast<float>(window.Time()));
+        renderer.Render(camera, static_cast<float>(window.Time()));
         device.Present(true);
     }
 
