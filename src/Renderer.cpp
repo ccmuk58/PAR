@@ -7,14 +7,58 @@
 #include <DirectXMath.h>
 #include <filesystem>
 #include <cstddef>
+#include <cstring>
 
 using Microsoft::WRL::ComPtr;
 namespace
 {
 	struct alignas(16) PerFrameCB
 	{
-		DirectX::XMFLOAT4X4 worldViewProj;
+		DirectX::XMFLOAT4X4 viewProj;
+		DirectX::XMFLOAT3   cameraPos;
+		float               pad0;
+		DirectX::XMFLOAT3   lightDir;
+		float               pad1;
+		DirectX::XMFLOAT3   lightColor;
+		float               pad2;
+		DirectX::XMFLOAT3   ambientColor;
+		float               pad3;
 	};
+
+	struct alignas(16) PerObjectCB
+	{
+		DirectX::XMFLOAT4X4 world;
+		DirectX::XMFLOAT4X4 worldInvTranspose;
+	};
+
+	static_assert(sizeof(PerFrameCB) % 16 == 0, "cbuffer 크기가 16바이트의 배수가 아닙니다.");
+	static_assert(sizeof(PerObjectCB) % 16 == 0, "cbuffer 크기가 16바이트의 배수가 아닙니다.");
+
+	// 빛이 진행하는 방향
+	const DirectX::XMFLOAT3 lightDir{ 0.5f, -0.7f, 0.6f };
+	const DirectX::XMFLOAT3 lightColor{ 1.0f, 1.0f, 1.0f };
+	const DirectX::XMFLOAT3 ambientColor{ 0.03f, 0.03f, 0.04f };
+
+	bool CreateConstantBuffer(ID3D11Device* dev, UINT size, ID3D11Buffer** buffer)
+	{
+		D3D11_BUFFER_DESC desc{};
+		desc.ByteWidth = size;
+		desc.Usage = D3D11_USAGE_DYNAMIC;
+		desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+		desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+		return Check(dev->CreateBuffer(&desc, nullptr, buffer), "CreateBuffer(cb)");
+	}
+
+	template <class T>
+	void UpdateConstantBuffer(ID3D11DeviceContext* ctx, ID3D11Buffer* buffer, const T& data)
+	{
+		D3D11_MAPPED_SUBRESOURCE mapped{};
+		if (SUCCEEDED(ctx->Map(buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped)))
+		{
+			std::memcpy(mapped.pData, &data, sizeof(T));
+			ctx->Unmap(buffer, 0);
+		}
+	}
 
 } // namespace
 
@@ -43,13 +87,9 @@ bool Renderer::CreatePipeline()
 		return false;
 
 	// constant buffer 생성
-	static_assert(sizeof(PerFrameCB) % 16 == 0, "cbuffer 크기가 16바이트의 배수가 아닙니다.");
-	D3D11_BUFFER_DESC cbd{};
-	cbd.ByteWidth = sizeof(PerFrameCB);
-	cbd.Usage = D3D11_USAGE_DYNAMIC;
-	cbd.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-	cbd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	if (!Check(dev->CreateBuffer(&cbd, nullptr, &m_cbPerFrame), "CreateBuffer(cb)"))
+	if (!CreateConstantBuffer(dev, sizeof(PerFrameCB), &m_cbPerFrame))
+		return false;
+	if (!CreateConstantBuffer(dev, sizeof(PerObjectCB), &m_cbPerObject))
 		return false;
 
 	return true;
@@ -58,22 +98,30 @@ bool Renderer::CreatePipeline()
 void Renderer::Render(const Camera& camera, float time)
 {
 	ID3D11DeviceContext* ctx = m_device->Context();
-	// wvp 행렬 계산
 	using namespace DirectX;
-	XMMATRIX world = XMMatrixRotationY(time);
-	XMMATRIX wvp = world * camera.ViewProj();
 
-	D3D11_MAPPED_SUBRESOURCE mapped{};
-	if (SUCCEEDED(ctx->Map(m_cbPerFrame.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped)))
-	{
-		auto* cb = static_cast<PerFrameCB*>(mapped.pData);
-		XMStoreFloat4x4(&cb->worldViewProj, XMMatrixTranspose(wvp));  // 전치
-		ctx->Unmap(m_cbPerFrame.Get(), 0);
-	}
+	// per frame constant buffer
+	PerFrameCB frame{};
+	XMStoreFloat4x4(&frame.viewProj, XMMatrixTranspose(camera.ViewProj()));
+	frame.cameraPos = camera.Position();
+	frame.lightDir = lightDir;
+	frame.lightColor = lightColor;
+	frame.ambientColor = ambientColor;
+	UpdateConstantBuffer(ctx, m_cbPerFrame.Get(), frame);
 
+	// per object constant buffer
+	const XMMATRIX world = XMMatrixRotationY(time);
+	const XMMATRIX worldInvTranspose = XMMatrixTranspose(XMMatrixInverse(nullptr, world));
+	PerObjectCB object{};
+	XMStoreFloat4x4(&object.world, XMMatrixTranspose(world));
+	XMStoreFloat4x4(&object.worldInvTranspose, XMMatrixTranspose(worldInvTranspose));
+	UpdateConstantBuffer(ctx, m_cbPerObject.Get(), object);
+
+	ID3D11Buffer* const cbs[] = { m_cbPerFrame.Get(), m_cbPerObject.Get() };
 	m_shader.Bind(ctx);
 	m_mesh.Bind(ctx);
-	ctx->VSSetConstantBuffers(0, 1, m_cbPerFrame.GetAddressOf());
+	ctx->VSSetConstantBuffers(0, 2, cbs);
+	ctx->PSSetConstantBuffers(0, 2, cbs);
 	ctx->DrawIndexed(m_mesh.IndexCount(), 0, 0);
 }
 

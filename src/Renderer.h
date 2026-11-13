@@ -23,4 +23,5 @@ private:
     Shader                         m_shader;
 	Mesh                           m_mesh;
     ComPtr<ID3D11Buffer>           m_cbPerFrame;
+    ComPtr<ID3D11Buffer>           m_cbPerObject;
 };
