@@ -4,8 +4,6 @@
 #include <filesystem>
 #include <utility>
 
-using namespace DirectX;
-
 bool Scene::Init(Device& device)
 {
 	const auto assetDir = std::filesystem::path(ASSET_DIR);
@@ -15,6 +13,7 @@ bool Scene::Init(Device& device)
 		return false;
 	if (!teapot.albedoMap.Load(device, assetDir / "textures" / "checker.png"))
 		return false;
+	DirectX::XMStoreFloat4x4(&teapot.world, DirectX::XMMatrixRotationY(-DirectX::XM_PIDIV2));
 	m_objects.push_back(std::move(teapot));
 
 	SceneObject ground;
@@ -28,8 +27,6 @@ bool Scene::Init(Device& device)
 	return true;
 }
 
-void Scene::Update(float time)
+void Scene::Update(float /*time*/)
 {
-	for (SceneObject& object : m_objects)
-		XMStoreFloat4x4(&object.world, XMMatrixRotationY(time));
 }
