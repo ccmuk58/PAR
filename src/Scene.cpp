@@ -17,6 +17,14 @@ bool Scene::Init(Device& device)
 		return false;
 	m_objects.push_back(std::move(teapot));
 
+	SceneObject ground;
+	if (!ground.mesh.Load(device, assetDir / "models" / "ground.obj"))
+		return false;
+	const uint8_t groundColor[4] = { 150, 150, 150, 255 };
+	if (!ground.albedoMap.Init(device, 1, 1, groundColor))
+		return false;
+	m_objects.push_back(std::move(ground));
+
 	return true;
 }
 
