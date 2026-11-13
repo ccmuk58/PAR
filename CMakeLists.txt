@@ -33,7 +33,8 @@ target_link_libraries(PAR PRIVATE glfw d3d11 dxgi d3dcompiler dxguid)
 
 target_compile_definitions(PAR PRIVATE
     UNICODE _UNICODE NOMINMAX WIN32_LEAN_AND_MEAN
-    SHADER_DIR="${CMAKE_CURRENT_SOURCE_DIR}/shaders")
+    SHADER_DIR="${CMAKE_CURRENT_SOURCE_DIR}/shaders"
+    ASSET_DIR="${CMAKE_CURRENT_SOURCE_DIR}/assets")
 
 if (MSVC)
     target_compile_options(PAR PRIVATE /W4 /utf-8)

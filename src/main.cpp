@@ -21,8 +21,9 @@ int main()
         return -1;
 
 	// 카메라 초기화
-    camera.SetPosition({ 0.0f, 0.0f, -3.0f });
-    camera.LookAt({ 0.0f, 0.0f, 0.0f });
+	float initialY = 2.0f;
+    camera.SetPosition({ 0.0f, initialY, -6.0f });
+    camera.LookAt({ 0.0f, initialY, 0.0f });
     camera.SetPerspective(DirectX::XMConvertToRadians(60.0f), 0.1f, 100.0f);
     camera.SetAspectRatio(device.AspectRatio());
 

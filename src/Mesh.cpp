@@ -3,32 +3,12 @@
 #include "Vertex.h"
 #include "D3DUtil.h"
 #include "Device.h"
-namespace
-{
-	const Vertex cubeVertices[] = {
-	{ { -0.5f,-0.5f,-0.5f },{ 0,0,0 } }, // 0
-	{ { -0.5f, 0.5f,-0.5f },{ 0,1,0 } }, // 1
-	{ { 0.5f, 0.5f,-0.5f },{ 1,1,0 } }, // 2
-	{ { 0.5f,-0.5f,-0.5f },{ 1,0,0 } }, // 3
-	{ { -0.5f,-0.5f, 0.5f },{ 0,0,1 } }, // 4
-	{ { -0.5f, 0.5f, 0.5f },{ 0,1,1 } }, // 5
-	{ { 0.5f, 0.5f, 0.5f },{ 1,1,1 } }, // 6
-	{ { 0.5f,-0.5f, 0.5f },{ 1,0,1 } }, // 7
-	};
-	const uint32_t cubeIndices[] = {
-		0,1,2, 0,2,3,   // 앞 (-Z)
-		7,6,5, 7,5,4,   // 뒤 (+Z)
-		4,5,1, 4,1,0,   // 왼 (-X)
-		3,2,6, 3,6,7,   // 오른 (+X)
-		1,5,6, 1,6,2,   // 위 (+Y)
-		3,7,4, 3,4,0,   // 아래 (-Y)
-	};
-
-} // namespace
+#include "MeshLoader.h"
 
 bool Mesh::Init(Device& device, std::span<const Vertex> vertices, std::span<const uint32_t> indices)
 {
 	ID3D11Device* dev = device.Get();
+
 	// vertex buffer 생성
 	D3D11_BUFFER_DESC bd{};
 	bd.ByteWidth =  static_cast<UINT>(vertices.size_bytes());
@@ -53,9 +33,12 @@ bool Mesh::Init(Device& device, std::span<const Vertex> vertices, std::span<cons
 	return true;
 }
 
-bool Mesh::InitCube(Device& device)
+bool Mesh::Load(Device& device, const std::filesystem::path& file)
 {
-	return Init(device, cubeVertices, cubeIndices);
+	MeshData data;
+	if (!LoadObj(file, data))
+		return false;
+	return Init(device, data.vertices, data.indices);
 }
 
 void Mesh::Bind(ID3D11DeviceContext* ctx) const

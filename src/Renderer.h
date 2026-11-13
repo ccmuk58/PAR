@@ -21,6 +21,6 @@ private:
 	Device* m_device = nullptr;
 
     Shader                         m_shader;
-	Mesh                           m_cube;
+	Mesh                           m_mesh;
     ComPtr<ID3D11Buffer>           m_cbPerFrame;
 };

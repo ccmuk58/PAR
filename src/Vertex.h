@@ -1,7 +1,9 @@
 #pragma once
+#include <DirectXMath.h>
 
 struct Vertex
 {
-    float pos[3];
-    float color[3];
+    DirectX::XMFLOAT3 pos;
+    DirectX::XMFLOAT3 normal;
+    DirectX::XMFLOAT2 uv;
 };

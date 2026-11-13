@@ -31,13 +31,15 @@ bool Renderer::CreatePipeline()
 
 	const D3D11_INPUT_ELEMENT_DESC layout[] = {
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(Vertex, pos),   D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		{ "COLOR",    0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(Vertex, color), D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(Vertex, normal), D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0, offsetof(Vertex, uv),     D3D11_INPUT_PER_VERTEX_DATA, 0 },
 	};
 	// shader 초기화
 	if (!m_shader.Init(*m_device, shaderPath, layout))
 		return false;
-	// mesh 초기화
-	if (!m_cube.InitCube(*m_device))
+	// mesh 로드
+	const auto meshPath = std::filesystem::path(ASSET_DIR) / "models" / "teapot.obj";
+	if (!m_mesh.Load(*m_device, meshPath))
 		return false;
 
 	// constant buffer 생성
@@ -70,8 +72,8 @@ void Renderer::Render(const Camera& camera, float time)
 	}
 
 	m_shader.Bind(ctx);
-	m_cube.Bind(ctx);
+	m_mesh.Bind(ctx);
 	ctx->VSSetConstantBuffers(0, 1, m_cbPerFrame.GetAddressOf());
-	ctx->DrawIndexed(m_cube.IndexCount(), 0, 0);
+	ctx->DrawIndexed(m_mesh.IndexCount(), 0, 0);
 }
 
