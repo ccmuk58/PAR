@@ -28,19 +28,25 @@ namespace {
 	}
 } // namespace
 
-bool Shader::Init(Device& device, const std::filesystem::path& file, std::span<const D3D11_INPUT_ELEMENT_DESC> layout)
+bool Shader::Init(Device& device, const std::filesystem::path& file, std::span<const D3D11_INPUT_ELEMENT_DESC> layout,
+	bool depthOnly)
 {
 	ID3D11Device* dev = device.Get();
 	ComPtr<ID3DBlob> vsBlob = CompileShader(file, "VSMain", "vs_5_0");
-	ComPtr<ID3DBlob> psBlob = CompileShader(file, "PSMain", "ps_5_0");
-	if (!vsBlob || !psBlob) return false;
+	if (!vsBlob) return false;
 
 	if (!Check(dev->CreateVertexShader(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), nullptr, &m_vs),
 		"CreateVertexShader"))
 		return false;
-	if (!Check(dev->CreatePixelShader(psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, &m_ps),
-		"CreatePixelShader"))
-		return false;
+
+	if (!depthOnly)
+	{
+		ComPtr<ID3DBlob> psBlob = CompileShader(file, "PSMain", "ps_5_0");
+		if (!psBlob) return false;
+		if (!Check(dev->CreatePixelShader(psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, &m_ps),
+			"CreatePixelShader"))
+			return false;
+	}
 
 	return Check(dev->CreateInputLayout(layout.data(), static_cast<UINT>(layout.size()),
 		vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), &m_inputLayout), "CreateInputLayout");

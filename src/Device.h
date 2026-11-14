@@ -10,6 +10,7 @@ public:
     bool Init(HWND hwnd, uint32_t width, uint32_t height);
     void Resize(uint32_t width, uint32_t height);
     void BeginFrame(const float clearColor[4]);
+    void BindBackBuffer();
     void BeginUI();
     void Present(bool vsync);
 

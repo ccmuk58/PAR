@@ -1,3 +1,5 @@
+#include "Common.hlsli"
+
 struct VSInput
 {
     float3 position : POSITION;
@@ -13,31 +15,29 @@ struct PSInput
     float2 uv       : TEXCOORD;
 };
 
-cbuffer PerFrame : register(b0)
-{
-    float4x4 gViewProj;
-    float3   gCameraPos;
-    float    gPad0;
-    float3   gLightDir;
-    float    gPad1;
-    float3   gLightColor;
-    float    gPad2;
-    float3   gAmbientColor;
-    float    gPad3;
-};
-
-cbuffer PerObject : register(b1)
-{
-    float4x4 gWorld;
-    float4x4 gWorldInvTranspose;
-};
-
-Texture2D    gAlbedoMap : register(t0);
-SamplerState gSampler   : register(s0);
+Texture2D              gAlbedoMap     : register(t0);
+Texture2D              gShadowMap     : register(t1);
+SamplerState           gSampler       : register(s0);
+SamplerComparisonState gShadowSampler : register(s1);
 
 static const float3 kSpecular = float3(0.5, 0.5, 0.5);
 static const float  kShininess = 64.0;
 
+float ShadowFactor(float3 worldPos)
+{
+    float4 lightPos = mul(float4(worldPos, 1.0), gLightViewProj);
+    float3 proj     = lightPos.xyz / lightPos.w;
+    float2 uv       = proj.xy * float2(0.5, -0.5) + 0.5;
+
+    // 3x3 PCF
+    float sum = 0.0;
+    [unroll] for (int y = -1; y <= 1; ++y)
+    {
+        [unroll] for (int x = -1; x <= 1; ++x)
+            sum += gShadowMap.SampleCmpLevelZero(gShadowSampler, uv, proj.z, int2(x, y));
+    }
+    return sum / 9.0;
+}
 
 PSInput VSMain(VSInput input)
 {
@@ -64,6 +64,8 @@ float4 PSMain(PSInput input) : SV_Target
     float3 diffuse  = albedo * NdotL;
     float3 specular = kSpecular * pow(saturate(dot(N, H)), kShininess) * (NdotL > 0.0 ? 1.0 : 0.0);
 
-    float3 color = gAmbientColor * albedo + (diffuse + specular) * gLightColor;
+    float shadow = ShadowFactor(input.worldPos);
+
+    float3 color = gAmbientColor * albedo + (diffuse + specular) * gLightColor * shadow;
     return float4(color, 1.0);
 }

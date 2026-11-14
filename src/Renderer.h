@@ -15,6 +15,8 @@ public:
 
 private:
     bool CreatePipeline();
+    bool CreateShadowMap();
+    void DrawObjects(const Scene& scene, bool bindMaterial);
 
     template <class T> using ComPtr = Microsoft::WRL::ComPtr<T>;
 
@@ -24,4 +26,10 @@ private:
     ComPtr<ID3D11SamplerState>     m_sampler;
     ComPtr<ID3D11Buffer>           m_cbPerFrame;
     ComPtr<ID3D11Buffer>           m_cbPerObject;
+
+    Shader                           m_shadowShader;
+    ComPtr<ID3D11DepthStencilView>   m_shadowDsv;
+    ComPtr<ID3D11ShaderResourceView> m_shadowSrv;
+    ComPtr<ID3D11SamplerState>       m_shadowSampler;
+    ComPtr<ID3D11RasterizerState>    m_shadowRasterizer;
 };

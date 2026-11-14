@@ -10,7 +10,7 @@ class Shader
 {
 public:
     bool Init(Device& device, const std::filesystem::path& file,
-        std::span<const D3D11_INPUT_ELEMENT_DESC> layout);
+        std::span<const D3D11_INPUT_ELEMENT_DESC> layout, bool depthOnly = false);
     void Bind(ID3D11DeviceContext* ctx) const;
 
 private:

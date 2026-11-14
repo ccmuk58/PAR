@@ -33,14 +33,19 @@ void Device::Resize(uint32_t width, uint32_t height)
 
 void Device::BeginFrame(const float clearColor[4])
 {
+	BindBackBuffer();
+
+	m_context->ClearRenderTargetView(m_rtv.Get(), clearColor);
+	m_context->ClearDepthStencilView(m_dsv.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+}
+
+void Device::BindBackBuffer()
+{
 	ID3D11RenderTargetView* rtvs[] = { m_rtv.Get() };
 	m_context->OMSetRenderTargets(1, rtvs, m_dsv.Get());
 
 	const D3D11_VIEWPORT viewport{ 0.0f, 0.0f, static_cast<float>(m_width), static_cast<float>(m_height), 0.0f, 1.0f };
 	m_context->RSSetViewports(1, &viewport);
-
-	m_context->ClearRenderTargetView(m_rtv.Get(), clearColor);
-	m_context->ClearDepthStencilView(m_dsv.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 }
 
 void Device::BeginUI()
