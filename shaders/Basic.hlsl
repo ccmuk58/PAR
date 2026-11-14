@@ -4,6 +4,7 @@ struct VSInput
 {
     float3 position : POSITION;
     float3 normal   : NORMAL;
+    float4 tangent  : TANGENT;
     float2 uv       : TEXCOORD;
 };
 
@@ -12,11 +13,13 @@ struct PSInput
     float4 position : SV_Position;
     float3 worldPos : POSITION;
     float3 normal   : NORMAL;
+    float4 tangent  : TANGENT;
     float2 uv       : TEXCOORD;
 };
 
 Texture2D              gAlbedoMap     : register(t0);
 Texture2D              gShadowMap     : register(t1);
+Texture2D              gNormalMap     : register(t2);
 SamplerState           gSampler       : register(s0);
 SamplerComparisonState gShadowSampler : register(s1);
 
@@ -48,6 +51,16 @@ float3 BlinnPhong(float3 N, float3 V, float3 L, float3 albedo)
     return diffuse + specular;
 }
 
+float3 SampleNormal(PSInput input)
+{
+    float3 N = normalize(input.normal);
+    float3 T = normalize(input.tangent.xyz - N * dot(input.tangent.xyz, N));
+    float3 B = cross(N, T) * input.tangent.w;
+
+    float3 n = gNormalMap.Sample(gSampler, input.uv).xyz * 2.0 - 1.0;
+    return normalize(n.x * T + n.y * B + n.z * N);
+}
+
 float RangeAttenuation(float dist, float range)
 {
     float ratio  = dist / max(range, 1e-4);
@@ -62,13 +75,14 @@ PSInput VSMain(VSInput input)
     output.position = mul(worldPos, gViewProj);
     output.worldPos = worldPos.xyz;
     output.normal   = mul(input.normal, (float3x3)gWorldInvTranspose);
+    output.tangent  = float4(mul(input.tangent.xyz, (float3x3)gWorld), input.tangent.w);
     output.uv       = input.uv;
     return output;
 }
 
 float4 PSMain(PSInput input) : SV_Target
 {
-    float3 N = normalize(input.normal);
+    float3 N = SampleNormal(input);
     float3 V = normalize(gCameraPos - input.worldPos);
 
     float3 albedo = gAlbedoMap.Sample(gSampler, input.uv).rgb;

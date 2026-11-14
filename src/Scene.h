@@ -37,6 +37,7 @@ struct SceneObject
 {
     Mesh    mesh;
     Texture albedoMap;
+    Texture normalMap;
     DirectX::XMFLOAT4X4 world{
         1.0f, 0.0f, 0.0f, 0.0f,
         0.0f, 1.0f, 0.0f, 0.0f,

@@ -1,6 +1,7 @@
 #include "MeshLoader.h"
 
 #include <charconv>
+#include <cmath>
 #include <cstdio>
 #include <fstream>
 #include <string>
@@ -79,6 +80,60 @@ namespace
 			token.remove_prefix(slash + 1);
 		}
 		return { ResolveIndex(raw[0], posCount), ResolveIndex(raw[1], uvCount), ResolveIndex(raw[2], normalCount) };
+	}
+
+	// xyz: tangent, w: bitangent 부호
+	void ComputeTangents(MeshData& mesh)
+	{
+		std::vector<XMFLOAT3> tangents(mesh.vertices.size(), XMFLOAT3{ 0.0f, 0.0f, 0.0f });
+		std::vector<XMFLOAT3> bitangents(mesh.vertices.size(), XMFLOAT3{ 0.0f, 0.0f, 0.0f });
+
+		for (size_t i = 0; i + 2 < mesh.indices.size(); i += 3)
+		{
+			const uint32_t ids[3] = { mesh.indices[i], mesh.indices[i + 1], mesh.indices[i + 2] };
+			const Vertex& v0 = mesh.vertices[ids[0]];
+			const Vertex& v1 = mesh.vertices[ids[1]];
+			const Vertex& v2 = mesh.vertices[ids[2]];
+
+			const XMVECTOR e1 = XMLoadFloat3(&v1.pos) - XMLoadFloat3(&v0.pos);
+			const XMVECTOR e2 = XMLoadFloat3(&v2.pos) - XMLoadFloat3(&v0.pos);
+			const float du1 = v1.uv.x - v0.uv.x;
+			const float dv1 = v1.uv.y - v0.uv.y;
+			const float du2 = v2.uv.x - v0.uv.x;
+			const float dv2 = v2.uv.y - v0.uv.y;
+			const float det = du1 * dv2 - du2 * dv1;
+			if (std::abs(det) < 1e-12f)
+				continue;
+
+			const XMVECTOR tangent = (e1 * dv2 - e2 * dv1) / det;
+			const XMVECTOR bitangent = (e2 * du1 - e1 * du2) / det;
+			for (const uint32_t id : ids)
+			{
+				XMStoreFloat3(&tangents[id], XMLoadFloat3(&tangents[id]) + tangent);
+				XMStoreFloat3(&bitangents[id], XMLoadFloat3(&bitangents[id]) + bitangent);
+			}
+		}
+
+		for (size_t i = 0; i < mesh.vertices.size(); ++i)
+		{
+			Vertex& vertex = mesh.vertices[i];
+			const XMVECTOR n = XMVector3Normalize(XMLoadFloat3(&vertex.normal));
+
+			// Gram-Schmidt 직교화
+			XMVECTOR t = XMLoadFloat3(&tangents[i]);
+			t = t - n * XMVector3Dot(n, t);
+			if (XMVectorGetX(XMVector3LengthSq(t)) < 1e-12f)
+			{
+				const XMVECTOR axis = std::abs(XMVectorGetX(n)) < 0.9f
+					? XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f)
+					: XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+				t = axis - n * XMVector3Dot(n, axis);
+			}
+			t = XMVector3Normalize(t);
+
+			const float side = XMVectorGetX(XMVector3Dot(XMVector3Cross(n, t), XMLoadFloat3(&bitangents[i])));
+			XMStoreFloat4(&vertex.tangent, XMVectorSetW(t, side < 0.0f ? -1.0f : 1.0f));
+		}
 	}
 
 } // namespace
@@ -197,5 +252,6 @@ bool LoadObj(const std::filesystem::path& file, MeshData& out)
 		}
 	}
 
+	ComputeTangents(out);
 	return true;
 }

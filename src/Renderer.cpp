@@ -102,6 +102,7 @@ bool Renderer::CreatePipeline()
 	const D3D11_INPUT_ELEMENT_DESC layout[] = {
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(Vertex, pos),   D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(Vertex, normal), D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "TANGENT",  0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, offsetof(Vertex, tangent), D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0, offsetof(Vertex, uv),     D3D11_INPUT_PER_VERTEX_DATA, 0 },
 	};
 	// shader 초기화
@@ -259,7 +260,10 @@ void Renderer::DrawObjects(const Scene& scene, bool bindMaterial)
 
 		sceneObject.mesh.Bind(ctx);
 		if (bindMaterial)
+		{
 			sceneObject.albedoMap.Bind(ctx, 0);
+			sceneObject.normalMap.Bind(ctx, 2);
+		}
 		ctx->DrawIndexed(sceneObject.mesh.IndexCount(), 0, 0);
 	}
 }

@@ -13,6 +13,8 @@ bool Scene::Init(Device& device)
 		return false;
 	if (!teapot.albedoMap.Load(device, assetDir / "textures" / "checker.png"))
 		return false;
+	if (!teapot.normalMap.Load(device, assetDir / "textures" / "checker_normal.png", false))
+		return false;
 	DirectX::XMStoreFloat4x4(&teapot.world, DirectX::XMMatrixRotationY(-DirectX::XM_PIDIV2));
 	m_objects.push_back(std::move(teapot));
 
@@ -21,6 +23,9 @@ bool Scene::Init(Device& device)
 		return false;
 	const uint8_t groundColor[4] = { 150, 150, 150, 255 };
 	if (!ground.albedoMap.Init(device, 1, 1, groundColor))
+		return false;
+	const uint8_t flatNormal[4] = { 128, 128, 255, 255 };
+	if (!ground.normalMap.Init(device, 1, 1, flatNormal, false))
 		return false;
 	m_objects.push_back(std::move(ground));
 
