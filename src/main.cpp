@@ -29,6 +29,33 @@ namespace
         ImGui::ColorEdit3("Color", &light.color.x);
         ImGui::ColorEdit3("Ambient", &scene.AmbientColor().x);
 
+        ImGui::SeparatorText("Point Light");
+        ImGui::PushID("Point");
+        PointLight& point = scene.Point();
+        ImGui::DragFloat3("Position", &point.position.x, 0.05f);
+        ImGui::ColorEdit3("Color", &point.color.x);
+        ImGui::DragFloat("Intensity", &point.intensity, 0.05f, 0.0f, 20.0f);
+        ImGui::DragFloat("Range", &point.range, 0.05f, 0.1f, 50.0f);
+        ImGui::PopID();
+
+        ImGui::SeparatorText("Spot Light");
+        ImGui::PushID("Spot");
+        SpotLight& spot = scene.Spot();
+        ImGui::DragFloat3("Position", &spot.position.x, 0.05f);
+        DirectX::XMFLOAT3 spotDirection = spot.direction;
+        if (ImGui::DragFloat3("Direction", &spotDirection.x, 0.01f, -1.0f, 1.0f))
+        {
+            const float lengthSq = spotDirection.x * spotDirection.x + spotDirection.y * spotDirection.y + spotDirection.z * spotDirection.z;
+            if (lengthSq > 1e-6f)
+                spot.direction = spotDirection;
+        }
+        ImGui::ColorEdit3("Color", &spot.color.x);
+        ImGui::DragFloat("Intensity", &spot.intensity, 0.05f, 0.0f, 20.0f);
+        ImGui::DragFloat("Range", &spot.range, 0.05f, 0.1f, 50.0f);
+        ImGui::DragFloat("Inner Angle", &spot.innerAngle, 0.1f, 0.0f, spot.outerAngle);
+        ImGui::DragFloat("Outer Angle", &spot.outerAngle, 0.1f, spot.innerAngle, 89.0f);
+        ImGui::PopID();
+
         ImGui::SeparatorText("Camera");
         float moveSpeed = cameraController.MoveSpeed();
         if (ImGui::DragFloat("Move Speed", &moveSpeed, 0.05f, 0.1f, 50.0f))

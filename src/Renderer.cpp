@@ -29,6 +29,18 @@ namespace
 		float               pad2;
 		DirectX::XMFLOAT3   ambientColor;
 		float               pad3;
+
+		DirectX::XMFLOAT3   pointPos;
+		float               pointRange;
+		DirectX::XMFLOAT3   pointColor;
+		float               pad4;
+
+		DirectX::XMFLOAT3   spotPos;
+		float               spotRange;
+		DirectX::XMFLOAT3   spotDir;
+		float               spotCosInner;
+		DirectX::XMFLOAT3   spotColor;
+		float               spotCosOuter;
 	};
 
 	struct alignas(16) PerObjectCB
@@ -189,6 +201,19 @@ void Renderer::Render(const Scene& scene, const Camera& camera)
 	frame.lightDir = scene.Light().direction;
 	frame.lightColor = scene.Light().color;
 	frame.ambientColor = scene.AmbientColor();
+
+	const PointLight& point = scene.Point();
+	frame.pointPos = point.position;
+	frame.pointRange = point.range;
+	XMStoreFloat3(&frame.pointColor, XMVectorScale(XMLoadFloat3(&point.color), point.intensity));
+
+	const SpotLight& spot = scene.Spot();
+	frame.spotPos = spot.position;
+	frame.spotRange = spot.range;
+	XMStoreFloat3(&frame.spotDir, XMVector3Normalize(XMLoadFloat3(&spot.direction)));
+	XMStoreFloat3(&frame.spotColor, XMVectorScale(XMLoadFloat3(&spot.color), spot.intensity));
+	frame.spotCosInner = std::cos(XMConvertToRadians(spot.innerAngle));
+	frame.spotCosOuter = std::cos(XMConvertToRadians(spot.outerAngle));
 	UpdateConstantBuffer(ctx, m_cbPerFrame.Get(), frame);
 
 	ID3D11Buffer* const cbs[] = { m_cbPerFrame.Get(), m_cbPerObject.Get() };

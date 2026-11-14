@@ -39,6 +39,22 @@ float ShadowFactor(float3 worldPos)
     return sum / 9.0;
 }
 
+float3 BlinnPhong(float3 N, float3 V, float3 L, float3 albedo)
+{
+    float3 H = normalize(L + V);
+    float  NdotL    = saturate(dot(N, L));
+    float3 diffuse  = albedo * NdotL;
+    float3 specular = kSpecular * pow(saturate(dot(N, H)), kShininess) * (NdotL > 0.0 ? 1.0 : 0.0);
+    return diffuse + specular;
+}
+
+float RangeAttenuation(float dist, float range)
+{
+    float ratio  = dist / max(range, 1e-4);
+    float window = saturate(1.0 - ratio * ratio);
+    return window * window;
+}
+
 PSInput VSMain(VSInput input)
 {
     PSInput output;
@@ -53,19 +69,28 @@ PSInput VSMain(VSInput input)
 float4 PSMain(PSInput input) : SV_Target
 {
     float3 N = normalize(input.normal);
-    float3 L = normalize(-gLightDir);
     float3 V = normalize(gCameraPos - input.worldPos);
-    float3 H = normalize(L + V);
 
     float3 albedo = gAlbedoMap.Sample(gSampler, input.uv).rgb;
+    float3 color  = gAmbientColor * albedo;
 
-    // Blinn-Phong
-    float  NdotL    = saturate(dot(N, L));
-    float3 diffuse  = albedo * NdotL;
-    float3 specular = kSpecular * pow(saturate(dot(N, H)), kShininess) * (NdotL > 0.0 ? 1.0 : 0.0);
-
+    // directional light
     float shadow = ShadowFactor(input.worldPos);
+    color += BlinnPhong(N, V, normalize(-gLightDir), albedo) * gLightColor * shadow;
 
-    float3 color = gAmbientColor * albedo + (diffuse + specular) * gLightColor * shadow;
+    // point light
+    float3 toPoint   = gPointPos - input.worldPos;
+    float  pointDist = length(toPoint);
+    color += BlinnPhong(N, V, toPoint / max(pointDist, 1e-4), albedo) * gPointColor
+           * RangeAttenuation(pointDist, gPointRange);
+
+    // spot light
+    float3 toSpot   = gSpotPos - input.worldPos;
+    float  spotDist = length(toSpot);
+    float3 spotL    = toSpot / max(spotDist, 1e-4);
+    float  cone     = smoothstep(gSpotCosOuter, gSpotCosInner, dot(-spotL, gSpotDir));
+    color += BlinnPhong(N, V, spotL, albedo) * gSpotColor
+           * RangeAttenuation(spotDist, gSpotRange) * cone;
+
     return float4(color, 1.0);
 }
