@@ -17,7 +17,6 @@ namespace
         ImGui::Begin("PAR");
         ImGui::Text("%.1f FPS (%.2f ms)", io.Framerate, 1000.0f / io.Framerate);
 
-        /*
         ImGui::SeparatorText("Light");
         DirectionalLight& light = scene.Light();
         DirectX::XMFLOAT3 direction = light.direction;
@@ -27,9 +26,10 @@ namespace
             if (lengthSq > 1e-6f)
                 light.direction = direction;
         }
+
+        /*
         ImGui::ColorEdit3("Color", &light.color.x);
         ImGui::ColorEdit3("Ambient", &scene.AmbientColor().x);
-
         ImGui::SeparatorText("Point Light");
         ImGui::PushID("Point");
         PointLight& point = scene.Point();
