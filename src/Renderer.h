@@ -8,15 +8,31 @@ class Device;
 class Camera;
 class Scene;
 
+enum class ToneMapOperator : int
+{
+    None,
+    Reinhard,
+    Aces,
+};
+
+struct ToneMapSettings
+{
+    float           exposure = 0.0f;
+    ToneMapOperator op = ToneMapOperator::Aces;
+};
+
 class Renderer
 {
 public:
 	bool Init(Device& device);
-    void Render(const Scene& scene, const Camera& camera);
+    void Render(const Scene& scene, const Camera& camera, const float clearColor[4]);
+
+    ToneMapSettings& ToneMap() { return m_toneMap; }
 
 private:
     bool CreatePipeline();
     bool CreateShadowMap();
+    bool CreateHdrTarget(UINT width, UINT height);
     void DrawObjects(const Scene& scene, bool bindMaterial);
     void BindMaterial(const Material& material);
 
@@ -39,4 +55,12 @@ private:
     ComPtr<ID3D11ShaderResourceView> m_shadowSrv;
     ComPtr<ID3D11SamplerState>       m_shadowSampler;
     ComPtr<ID3D11RasterizerState>    m_shadowRasterizer;
+
+    Shader                           m_toneMapShader;
+    ComPtr<ID3D11RenderTargetView>   m_hdrRtv;
+    ComPtr<ID3D11ShaderResourceView> m_hdrSrv;
+    ComPtr<ID3D11Buffer>             m_cbToneMap;
+    ToneMapSettings                  m_toneMap;
+    UINT                             m_hdrWidth = 0;
+    UINT                             m_hdrHeight = 0;
 };

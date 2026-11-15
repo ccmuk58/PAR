@@ -10,7 +10,7 @@
 
 namespace
 {
-    void DrawDebugPanel(Scene& scene, CameraController& cameraController)
+    void DrawDebugPanel(Scene& scene, Renderer& renderer, CameraController& cameraController)
     {
         const ImGuiIO& io = ImGui::GetIO();
 
@@ -65,6 +65,15 @@ namespace
         float sensitivity = cameraController.MouseSensitivity();
         if (ImGui::DragFloat("Sensitivity", &sensitivity, 0.0001f, 0.0001f, 0.01f, "%.4f"))
             cameraController.SetMouseSensitivity(sensitivity);
+
+
+        ImGui::SeparatorText("Tone Mapping");
+        ToneMapSettings& toneMap = renderer.ToneMap();
+        ImGui::SliderFloat("Exposure (EV)", &toneMap.exposure, -5.0f, 5.0f, "%.2f");
+        int toneMapOp = static_cast<int>(toneMap.op);
+        if (ImGui::Combo("Operator", &toneMapOp, "None\0Reinhard\0ACES\0"))
+            toneMap.op = static_cast<ToneMapOperator>(toneMapOp);
+
         */
 
 
@@ -158,11 +167,11 @@ int main()
 
         cameraController.Update(camera, window, deltaTime);
         scene.Update(static_cast<float>(now));
-        DrawDebugPanel(scene, cameraController);
+        DrawDebugPanel(scene, renderer, cameraController);
 
         const float clearColor[4] = { 0.02f, 0.02f, 0.03f, 1.0f };
         device.BeginFrame(clearColor);
-        renderer.Render(scene, camera);
+        renderer.Render(scene, camera, clearColor);
         gui.Render();
         device.Present(true);
     }

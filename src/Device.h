@@ -16,6 +16,9 @@ public:
 
     ID3D11Device* Get() const { return m_device.Get(); }
     ID3D11DeviceContext* Context() const { return m_context.Get(); }
+    ID3D11DepthStencilView* DepthView() const { return m_dsv.Get(); }
+    uint32_t Width() const { return m_width; }
+    uint32_t Height() const { return m_height; }
     float AspectRatio() const { return float(m_width) / float(m_height); }
 
 private:

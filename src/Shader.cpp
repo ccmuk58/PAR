@@ -48,6 +48,9 @@ bool Shader::Init(Device& device, const std::filesystem::path& file, std::span<c
 			return false;
 	}
 
+	if (layout.empty())
+		return true;
+
 	return Check(dev->CreateInputLayout(layout.data(), static_cast<UINT>(layout.size()),
 		vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), &m_inputLayout), "CreateInputLayout");
 }

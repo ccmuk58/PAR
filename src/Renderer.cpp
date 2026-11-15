@@ -57,6 +57,13 @@ namespace
 		float             pad0;
 	};
 
+	struct alignas(16) ToneMapCB
+	{
+		float exposure;
+		int   op;
+		float pad[2];
+	};
+
 	static_assert(sizeof(PerMaterialCB) % 16 == 0, "cbuffer 크기가 16바이트의 배수가 아닙니다.");
 	static_assert(sizeof(PerFrameCB) % 16 == 0, "cbuffer 크기가 16바이트의 배수가 아닙니다.");
 	static_assert(sizeof(PerObjectCB) % 16 == 0, "cbuffer 크기가 16바이트의 배수가 아닙니다.");
@@ -100,7 +107,7 @@ namespace
 bool Renderer::Init(Device& device)
 {
 	m_device = &device;
-	return CreatePipeline() && CreateShadowMap();
+	return CreatePipeline() && CreateShadowMap() && CreateHdrTarget(device.Width(), device.Height());
 }
 
 bool Renderer::CreatePipeline()
@@ -118,6 +125,8 @@ bool Renderer::CreatePipeline()
 	if (!m_shader.Init(*m_device, shaderPath, layout))
 		return false;
 	if (!m_shadowShader.Init(*m_device, std::filesystem::path(SHADER_DIR) / "Shadow.hlsl", layout, true))
+		return false;
+	if (!m_toneMapShader.Init(*m_device, std::filesystem::path(SHADER_DIR) / "ToneMap.hlsl", {}))
 		return false;
 
 	// sampler 생성
@@ -138,6 +147,8 @@ bool Renderer::CreatePipeline()
 	if (!CreateConstantBuffer(dev, sizeof(PerObjectCB), &m_cbPerObject))
 		return false;
 	if (!CreateConstantBuffer(dev, sizeof(PerMaterialCB), &m_cbPerMaterial))
+		return false;
+	if (!CreateConstantBuffer(dev, sizeof(ToneMapCB), &m_cbToneMap))
 		return false;
 
 	// 기본 texture 생성
@@ -208,10 +219,45 @@ bool Renderer::CreateShadowMap()
 	return Check(dev->CreateRasterizerState(&rasterizerDesc, &m_shadowRasterizer), "CreateRasterizerState(shadow)");
 }
 
-void Renderer::Render(const Scene& scene, const Camera& camera)
+bool Renderer::CreateHdrTarget(UINT width, UINT height)
+{
+	ID3D11Device* dev = m_device->Get();
+	m_hdrRtv.Reset();
+	m_hdrSrv.Reset();
+
+	// HDR render target 생성
+	D3D11_TEXTURE2D_DESC desc{};
+	desc.Width = width;
+	desc.Height = height;
+	desc.MipLevels = 1;
+	desc.ArraySize = 1;
+	desc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+	desc.SampleDesc.Count = 1;
+	desc.Usage = D3D11_USAGE_DEFAULT;
+	desc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+
+	ComPtr<ID3D11Texture2D> texture;
+	if (!Check(dev->CreateTexture2D(&desc, nullptr, &texture), "CreateTexture2D(hdr)"))
+		return false;
+	if (!Check(dev->CreateRenderTargetView(texture.Get(), nullptr, &m_hdrRtv), "CreateRenderTargetView(hdr)"))
+		return false;
+	if (!Check(dev->CreateShaderResourceView(texture.Get(), nullptr, &m_hdrSrv), "CreateShaderResourceView(hdr)"))
+		return false;
+
+	m_hdrWidth = width;
+	m_hdrHeight = height;
+	return true;
+}
+
+void Renderer::Render(const Scene& scene, const Camera& camera, const float clearColor[4])
 {
 	ID3D11DeviceContext* ctx = m_device->Context();
 	using namespace DirectX;
+
+	const UINT width = m_device->Width();
+	const UINT height = m_device->Height();
+	if ((width != m_hdrWidth || height != m_hdrHeight) && !CreateHdrTarget(width, height))
+		return;
 
 	// per frame constant buffer
 	PerFrameCB frame{};
@@ -250,7 +296,10 @@ void Renderer::Render(const Scene& scene, const Camera& camera)
 	DrawObjects(scene, false);
 
 	// main pass
-	m_device->BindBackBuffer();
+	const D3D11_VIEWPORT viewport{ 0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height), 0.0f, 1.0f };
+	ctx->OMSetRenderTargets(1, m_hdrRtv.GetAddressOf(), m_device->DepthView());
+	ctx->ClearRenderTargetView(m_hdrRtv.Get(), clearColor);
+	ctx->RSSetViewports(1, &viewport);
 	ctx->RSSetState(nullptr);
 	m_shader.Bind(ctx);
 	ID3D11SamplerState* const samplers[] = { m_sampler.Get(), m_shadowSampler.Get() };
@@ -260,6 +309,20 @@ void Renderer::Render(const Scene& scene, const Camera& camera)
 
 	ID3D11ShaderResourceView* const nullSrv = nullptr;
 	ctx->PSSetShaderResources(1, 1, &nullSrv);
+
+	// tone mapping pass
+	ToneMapCB toneMap{};
+	toneMap.exposure = std::exp2(m_toneMap.exposure);
+	toneMap.op = static_cast<int>(m_toneMap.op);
+	UpdateConstantBuffer(ctx, m_cbToneMap.Get(), toneMap);
+
+	m_device->BindBackBuffer();
+	m_toneMapShader.Bind(ctx);
+	ctx->PSSetConstantBuffers(0, 1, m_cbToneMap.GetAddressOf());
+	ctx->PSSetShaderResources(0, 1, m_hdrSrv.GetAddressOf());
+	ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	ctx->Draw(3, 0);
+	ctx->PSSetShaderResources(0, 1, &nullSrv);
 }
 
 void Renderer::DrawObjects(const Scene& scene, bool bindMaterial)
