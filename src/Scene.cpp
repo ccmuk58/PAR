@@ -9,33 +9,35 @@ bool Scene::Init(Device& device)
 {
 	const auto assetDir = std::filesystem::path(ASSET_DIR);
 
-	// material
-	auto checker = std::make_shared<Material>();
-	checker->name = "Checker";
-	if (!checker->albedoMap.Load(device, assetDir / "textures" / "checker.png"))
-		return false;
-	if (!checker->normalMap.Load(device, assetDir / "textures" / "checker_normal.png", false))
-		return false;
-	m_materials.push_back(checker);
 
+	// material
 	auto gray = std::make_shared<Material>();
 	gray->name = "Ground";
 	gray->albedo = { 0.305f, 0.305f, 0.305f };
 	m_materials.push_back(gray);
 
+	auto wallMaterial = std::make_shared<Material>();
+	wallMaterial->name = "Wall";
+	m_materials.push_back(wallMaterial);
+
 	// object
-	SceneObject teapot;
-	if (!teapot.mesh.Load(device, assetDir / "models" / "teapot.obj"))
+	Mesh cube;
+	if (!cube.Load(device, assetDir / "models" / "cube.obj"))
 		return false;
-	teapot.material = checker;
-	DirectX::XMStoreFloat4x4(&teapot.world, DirectX::XMMatrixRotationY(-DirectX::XM_PIDIV2));
-	m_objects.push_back(std::move(teapot));
 
 	SceneObject ground;
-	if (!ground.mesh.Load(device, assetDir / "models" / "ground.obj"))
-		return false;
+	ground.mesh = cube;
 	ground.material = gray;
+	DirectX::XMStoreFloat4x4(&ground.world,
+		DirectX::XMMatrixScaling(15.0f, 0.1f, 15.0f) * DirectX::XMMatrixTranslation(0.0f, -0.1f, 0.0f));
 	m_objects.push_back(std::move(ground));
+
+	SceneObject wall;
+	wall.mesh = cube;
+	wall.material = wallMaterial;
+	DirectX::XMStoreFloat4x4(&wall.world,
+		DirectX::XMMatrixScaling(2.0f, 1.0f, 0.4f) * DirectX::XMMatrixTranslation(0.0f, 1.0f, 0.0f));
+	m_objects.push_back(std::move(wall));
 
 	return true;
 }
