@@ -1,7 +1,8 @@
 #pragma once
 #include "Mesh.h"
-#include "Texture.h"
+#include "Material.h"
 #include <DirectXMath.h>
+#include <memory>
 #include <vector>
 
 class Device;
@@ -35,9 +36,8 @@ struct SpotLight
 
 struct SceneObject
 {
-    Mesh    mesh;
-    Texture albedoMap;
-    Texture normalMap;
+    Mesh                      mesh;
+    std::shared_ptr<Material> material;
     DirectX::XMFLOAT4X4 world{
         1.0f, 0.0f, 0.0f, 0.0f,
         0.0f, 1.0f, 0.0f, 0.0f,
@@ -52,6 +52,7 @@ public:
     void Update(float time);
 
     const std::vector<SceneObject>& Objects() const { return m_objects; }
+    const std::vector<std::shared_ptr<Material>>& Materials() const { return m_materials; }
     const DirectionalLight& Light() const { return m_light; }
     const PointLight& Point() const { return m_pointLight; }
     const SpotLight& Spot() const { return m_spotLight; }
@@ -64,6 +65,7 @@ public:
 
 private:
     std::vector<SceneObject> m_objects;
+    std::vector<std::shared_ptr<Material>> m_materials;
     DirectionalLight         m_light;
     PointLight               m_pointLight;
     SpotLight                m_spotLight;

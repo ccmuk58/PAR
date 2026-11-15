@@ -23,9 +23,6 @@ Texture2D              gNormalMap     : register(t2);
 SamplerState           gSampler       : register(s0);
 SamplerComparisonState gShadowSampler : register(s1);
 
-static const float3 kSpecular = float3(0.5, 0.5, 0.5);
-static const float  kShininess = 64.0;
-
 float ShadowFactor(float3 worldPos)
 {
     float4 lightPos = mul(float4(worldPos, 1.0), gLightViewProj);
@@ -47,7 +44,7 @@ float3 BlinnPhong(float3 N, float3 V, float3 L, float3 albedo)
     float3 H = normalize(L + V);
     float  NdotL    = saturate(dot(N, L));
     float3 diffuse  = albedo * NdotL;
-    float3 specular = kSpecular * pow(saturate(dot(N, H)), kShininess) * (NdotL > 0.0 ? 1.0 : 0.0);
+    float3 specular = gSpecular * pow(saturate(dot(N, H)), gShininess) * (NdotL > 0.0 ? 1.0 : 0.0);
     return diffuse + specular;
 }
 
@@ -85,7 +82,7 @@ float4 PSMain(PSInput input) : SV_Target
     float3 N = SampleNormal(input);
     float3 V = normalize(gCameraPos - input.worldPos);
 
-    float3 albedo = gAlbedoMap.Sample(gSampler, input.uv).rgb;
+    float3 albedo = gAlbedoMap.Sample(gSampler, input.uv).rgb * gAlbedo;
     float3 color  = gAmbientColor * albedo;
 
     // directional light

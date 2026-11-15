@@ -17,6 +17,7 @@ namespace
         ImGui::Begin("PAR");
         ImGui::Text("%.1f FPS (%.2f ms)", io.Framerate, 1000.0f / io.Framerate);
 
+        /*
         ImGui::SeparatorText("Light");
         DirectionalLight& light = scene.Light();
         DirectX::XMFLOAT3 direction = light.direction;
@@ -56,6 +57,7 @@ namespace
         ImGui::DragFloat("Outer Angle", &spot.outerAngle, 0.1f, spot.innerAngle, 89.0f);
         ImGui::PopID();
 
+
         ImGui::SeparatorText("Camera");
         float moveSpeed = cameraController.MoveSpeed();
         if (ImGui::DragFloat("Move Speed", &moveSpeed, 0.05f, 0.1f, 50.0f))
@@ -63,7 +65,22 @@ namespace
         float sensitivity = cameraController.MouseSensitivity();
         if (ImGui::DragFloat("Sensitivity", &sensitivity, 0.0001f, 0.0001f, 0.01f, "%.4f"))
             cameraController.SetMouseSensitivity(sensitivity);
+        */
 
+
+        ImGui::SeparatorText("Material");
+        for (const auto& material : scene.Materials())
+        {
+            ImGui::PushID(material.get());
+            if (ImGui::TreeNode(material->name.c_str()))
+            {
+                ImGui::ColorEdit3("Albedo", &material->albedo.x);
+                ImGui::ColorEdit3("Specular", &material->specular.x);
+                ImGui::DragFloat("Shininess", &material->shininess, 0.5f, 1.0f, 512.0f);
+                ImGui::TreePop();
+            }
+            ImGui::PopID();
+        }
         ImGui::End();
     }
 }

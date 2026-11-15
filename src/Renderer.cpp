@@ -49,6 +49,15 @@ namespace
 		DirectX::XMFLOAT4X4 worldInvTranspose;
 	};
 
+	struct alignas(16) PerMaterialCB
+	{
+		DirectX::XMFLOAT3 albedo;
+		float             shininess;
+		DirectX::XMFLOAT3 specular;
+		float             pad0;
+	};
+
+	static_assert(sizeof(PerMaterialCB) % 16 == 0, "cbuffer 크기가 16바이트의 배수가 아닙니다.");
 	static_assert(sizeof(PerFrameCB) % 16 == 0, "cbuffer 크기가 16바이트의 배수가 아닙니다.");
 	static_assert(sizeof(PerObjectCB) % 16 == 0, "cbuffer 크기가 16바이트의 배수가 아닙니다.");
 
@@ -127,6 +136,16 @@ bool Renderer::CreatePipeline()
 	if (!CreateConstantBuffer(dev, sizeof(PerFrameCB), &m_cbPerFrame))
 		return false;
 	if (!CreateConstantBuffer(dev, sizeof(PerObjectCB), &m_cbPerObject))
+		return false;
+	if (!CreateConstantBuffer(dev, sizeof(PerMaterialCB), &m_cbPerMaterial))
+		return false;
+
+	// 기본 texture 생성
+	const uint8_t white[4] = { 255, 255, 255, 255 };
+	if (!m_whiteTexture.Init(*m_device, 1, 1, white))
+		return false;
+	const uint8_t flatNormal[4] = { 128, 128, 255, 255 };
+	if (!m_flatNormalTexture.Init(*m_device, 1, 1, flatNormal, false))
 		return false;
 
 	return true;
@@ -217,9 +236,9 @@ void Renderer::Render(const Scene& scene, const Camera& camera)
 	frame.spotCosOuter = std::cos(XMConvertToRadians(spot.outerAngle));
 	UpdateConstantBuffer(ctx, m_cbPerFrame.Get(), frame);
 
-	ID3D11Buffer* const cbs[] = { m_cbPerFrame.Get(), m_cbPerObject.Get() };
+	ID3D11Buffer* const cbs[] = { m_cbPerFrame.Get(), m_cbPerObject.Get(), m_cbPerMaterial.Get() };
 	ctx->VSSetConstantBuffers(0, 2, cbs);
-	ctx->PSSetConstantBuffers(0, 2, cbs);
+	ctx->PSSetConstantBuffers(0, 3, cbs);
 
 	// shadow pass
 	const D3D11_VIEWPORT shadowViewport{ 0.0f, 0.0f, static_cast<float>(kShadowMapSize), static_cast<float>(kShadowMapSize), 0.0f, 1.0f };
@@ -248,6 +267,7 @@ void Renderer::DrawObjects(const Scene& scene, bool bindMaterial)
 	ID3D11DeviceContext* ctx = m_device->Context();
 	using namespace DirectX;
 
+	const Material* boundMaterial = nullptr;
 	for (const SceneObject& sceneObject : scene.Objects())
 	{
 		// per object constant buffer
@@ -261,9 +281,28 @@ void Renderer::DrawObjects(const Scene& scene, bool bindMaterial)
 		sceneObject.mesh.Bind(ctx);
 		if (bindMaterial)
 		{
-			sceneObject.albedoMap.Bind(ctx, 0);
-			sceneObject.normalMap.Bind(ctx, 2);
+			const Material* material = sceneObject.material ? sceneObject.material.get() : &m_defaultMaterial;
+			if (material != boundMaterial)
+			{
+				BindMaterial(*material);
+				boundMaterial = material;
+			}
 		}
 		ctx->DrawIndexed(sceneObject.mesh.IndexCount(), 0, 0);
 	}
+}
+
+void Renderer::BindMaterial(const Material& material)
+{
+	ID3D11DeviceContext* ctx = m_device->Context();
+
+	// per material constant buffer
+	PerMaterialCB data{};
+	data.albedo = material.albedo;
+	data.shininess = material.shininess;
+	data.specular = material.specular;
+	UpdateConstantBuffer(ctx, m_cbPerMaterial.Get(), data);
+
+	(material.albedoMap.IsValid() ? material.albedoMap : m_whiteTexture).Bind(ctx, 0);
+	(material.normalMap.IsValid() ? material.normalMap : m_flatNormalTexture).Bind(ctx, 2);
 }
