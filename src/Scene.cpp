@@ -32,7 +32,11 @@ bool Scene::Init(Device& device)
 
 	auto castleWallMaterial_POM = std::make_shared<Material>();
 	castleWallMaterial_POM->name = "Castle Wall POM";
-	if (!castleWallMaterial_POM->albedoMap.Load(device, assetDir / "textures" / "castle_wall_height.png"))
+	if (!castleWallMaterial_POM->albedoMap.Load(device, assetDir / "textures" / "castle_wall_albedo.png"))
+		return false;
+	if (!castleWallMaterial_POM->normalMap.Load(device, assetDir / "textures" / "castle_wall_normal.png"))
+		return false;
+	if (!castleWallMaterial_POM->heightMap.Load(device, assetDir / "textures" / "castle_wall_height.png", false))
 		return false;
 	m_materials.push_back(castleWallMaterial_POM);
 

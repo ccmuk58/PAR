@@ -54,7 +54,7 @@ namespace
 		DirectX::XMFLOAT3 albedo;
 		float             shininess;
 		DirectX::XMFLOAT3 specular;
-		float             pad0;
+		float             heightScale;
 	};
 
 	struct alignas(16) ToneMapCB
@@ -364,8 +364,10 @@ void Renderer::BindMaterial(const Material& material)
 	data.albedo = material.albedo;
 	data.shininess = material.shininess;
 	data.specular = material.specular;
+	data.heightScale = material.heightScale;
 	UpdateConstantBuffer(ctx, m_cbPerMaterial.Get(), data);
 
 	(material.albedoMap.IsValid() ? material.albedoMap : m_whiteTexture).Bind(ctx, 0);
 	(material.normalMap.IsValid() ? material.normalMap : m_flatNormalTexture).Bind(ctx, 2);
+	(material.heightMap.IsValid() ? material.heightMap : m_whiteTexture).Bind(ctx, 3);
 }

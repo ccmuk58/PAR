@@ -36,5 +36,5 @@ cbuffer PerMaterial : register(b2)
     float3   gAlbedo;
     float    gShininess;
     float3   gSpecular;
-    float    gPad5;
+    float    gHeightScale;
 };
