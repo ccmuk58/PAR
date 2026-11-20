@@ -46,7 +46,10 @@ bool Scene::Init(Device& device)
 	Mesh cube;
 	Mesh cube256;
 	Mesh cube_rounded_256;
+	Mesh cube_rounded_low;
 	if (!cube.Load(device, assetDir / "models" / "cube.obj"))
+		return false;
+	if (!cube_rounded_low.Load(device, assetDir / "models" / "cube_rounded_low.obj"))
 		return false;
 	if (!cube256.Load(device, assetDir / "models" / "cube_256.obj"))
 		return false;
@@ -61,7 +64,7 @@ bool Scene::Init(Device& device)
 	m_objects.push_back(std::move(ground));
 
 	SceneObject castleWallPOM;
-	castleWallPOM.mesh = cube;
+	castleWallPOM.mesh = cube_rounded_low;
 	castleWallPOM.material = castleWallMaterial_POM;
 	DirectX::XMStoreFloat4x4(&castleWallPOM.world,
 		DirectX::XMMatrixScaling(1.0f, 1.0f, 1.0f) * DirectX::XMMatrixTranslation(-1.25f, 2.0f, 0.0f));
