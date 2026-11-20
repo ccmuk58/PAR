@@ -57,6 +57,8 @@ namespace
 		float             shininess;
 		DirectX::XMFLOAT3 specular;
 		float             heightScale;
+		float             displacementScale;
+		DirectX::XMFLOAT3 pad5;
 	};
 
 	struct alignas(16) ToneMapCB
@@ -286,7 +288,7 @@ void Renderer::Render(const Scene& scene, const Camera& camera, const float clea
 	UpdateConstantBuffer(ctx, m_cbPerFrame.Get(), frame);
 
 	ID3D11Buffer* const cbs[] = { m_cbPerFrame.Get(), m_cbPerObject.Get(), m_cbPerMaterial.Get() };
-	ctx->VSSetConstantBuffers(0, 2, cbs);
+	ctx->VSSetConstantBuffers(0, 3, cbs);
 	ctx->PSSetConstantBuffers(0, 3, cbs);
 
 	// shadow pass
@@ -312,6 +314,7 @@ void Renderer::Render(const Scene& scene, const Camera& camera, const float clea
 		ctx->RSSetState(nullptr);
 		m_shader.Bind(ctx);
 		ID3D11SamplerState* const samplers[] = { m_sampler.Get(), m_shadowSampler.Get() };
+		ctx->VSSetSamplers(0, 1, samplers);
 		ctx->PSSetSamplers(0, 2, samplers);
 		ctx->PSSetShaderResources(1, 1, m_shadowSrv.GetAddressOf());
 		DrawObjects(scene, true);
@@ -385,6 +388,8 @@ void Renderer::BindMaterial(const Material& material)
 	data.shininess = material.shininess;
 	data.specular = material.specular;
 	data.heightScale = material.heightScale;
+	data.displacementScale = material.displacementScale;
+
 	UpdateConstantBuffer(ctx, m_cbPerMaterial.Get(), data);
 
 	(material.albedoMap.IsValid() ? material.albedoMap : m_whiteTexture).Bind(ctx, 0);

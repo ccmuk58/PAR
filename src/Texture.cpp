@@ -53,4 +53,5 @@ bool Texture::Load(Device& device, const std::filesystem::path& file, bool srgb)
 void Texture::Bind(ID3D11DeviceContext* ctx, UINT slot) const
 {
 	ctx->PSSetShaderResources(slot, 1, m_srv.GetAddressOf());
+	ctx->VSSetShaderResources(slot, 1, m_srv.GetAddressOf());
 }

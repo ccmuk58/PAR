@@ -27,7 +27,7 @@ SamplerComparisonState gShadowSampler : register(s1);
 float2 ParallaxOcclusion(float2 uv, float3 Vts)
 {
     const float minLayers = 8.0;
-    const float maxLayers = 32.0;
+    const float maxLayers = 64.0;
     float numLayers = lerp(maxLayers, minLayers, saturate(Vts.z));
     float layerDepth = 1.0 / numLayers;
     
@@ -97,12 +97,19 @@ float RangeAttenuation(float dist, float range)
 PSInput VSMain(VSInput input)
 {
     PSInput output;
-    float4 worldPos = mul(float4(input.position, 1.0), gWorld);
+    
+    float h = gHeightMap.SampleLevel(gSampler, input.uv, 3).r;
+    // float edge = min(min(input.uv.x, 1 - input.uv.x), min(input.uv.y, 1 - input.uv.y));
+    // float scale = gDisplacementScale * saturate(edge * 20.0);
+    float3 pos = input.position + input.normal * (h - 1.0) * gDisplacementScale;
+    float4 worldPos = mul(float4(pos, 1.0), gWorld);
+    
     output.position = mul(worldPos, gViewProj);
     output.worldPos = worldPos.xyz;
     output.normal   = mul(input.normal, (float3x3)gWorldInvTranspose);
     output.tangent  = float4(mul(input.tangent.xyz, (float3x3)gWorld), input.tangent.w);
     output.uv       = input.uv;
+    
     return output;
 }
 
@@ -125,7 +132,10 @@ float4 PSMain(PSInput input) : SV_Target
     float3 T = normalize(input.tangent.xyz - N0 * dot(input.tangent.xyz, N0));
     float3 B = cross(N0, T) * input.tangent.w;
     
-    float2 uv = ParallaxOcclusion(input.uv, float3(dot(V, T), dot(V, B), dot(V, N0)));
+    
+    float2 uv = input.uv;
+    if(gHeightScale > 0.0f)
+        uv = ParallaxOcclusion(input.uv, float3(dot(V, T), dot(V, B), dot(V, N0)));
     
     float3 N = SampleNormal(uv, T, B, N0);
 

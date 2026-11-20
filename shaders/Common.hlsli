@@ -35,6 +35,12 @@ cbuffer PerMaterial : register(b2)
 {
     float3   gAlbedo;
     float    gShininess;
+    
+    // parallax occlusion mapping
     float3   gSpecular;
     float    gHeightScale;
+    
+    // displacement mapping
+    float gDisplacementScale;
+    float3 gPad5;
 };

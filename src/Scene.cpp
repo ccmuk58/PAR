@@ -16,12 +16,6 @@ bool Scene::Init(Device& device)
 	gray->albedo = { 0.305f, 0.305f, 0.305f };
 	m_materials.push_back(gray);
 
-	auto castleWallMaterialRaw = std::make_shared<Material>();
-	castleWallMaterialRaw->name = "Castle Wall";
-	if (!castleWallMaterialRaw->albedoMap.Load(device, assetDir / "textures" / "castle_wall_albedo.png"))
-		return false;
-	m_materials.push_back(castleWallMaterialRaw);
-
 	auto castleWallMaterial_normal = std::make_shared<Material>();
 	castleWallMaterial_normal->name = "Castle Wall Normal";
 	if (!castleWallMaterial_normal->albedoMap.Load(device, assetDir / "textures" / "castle_wall_albedo.png"))
@@ -32,6 +26,8 @@ bool Scene::Init(Device& device)
 
 	auto castleWallMaterial_POM = std::make_shared<Material>();
 	castleWallMaterial_POM->name = "Castle Wall POM";
+	castleWallMaterial_POM->heightScale = 0.04f;
+	castleWallMaterial_POM->displacementScale = 0.00f;
 	if (!castleWallMaterial_POM->albedoMap.Load(device, assetDir / "textures" / "castle_wall_albedo.png"))
 		return false;
 	if (!castleWallMaterial_POM->normalMap.Load(device, assetDir / "textures" / "castle_wall_normal.png"))
@@ -40,13 +36,25 @@ bool Scene::Init(Device& device)
 		return false;
 	m_materials.push_back(castleWallMaterial_POM);
 
+	auto castleWallMaterial_Displacement = std::make_shared<Material>();
+	castleWallMaterial_Displacement->name = "Castle Wall Displacement";
+	castleWallMaterial_Displacement->heightScale = 0.00f;
+	castleWallMaterial_Displacement->displacementScale = 0.08f;
+	if (!castleWallMaterial_Displacement->albedoMap.Load(device, assetDir / "textures" / "castle_wall_albedo.png"))
+		return false;
+	if (!castleWallMaterial_Displacement->normalMap.Load(device, assetDir / "textures" / "castle_wall_normal.png"))
+		return false;
+	if (!castleWallMaterial_Displacement->heightMap.Load(device, assetDir / "textures" / "castle_wall_height.png", false))
+		return false;
+	m_materials.push_back(castleWallMaterial_Displacement);
+
 
 	// object
 	Mesh cube;
-	Mesh sphere;
+	Mesh cube256;
 	if (!cube.Load(device, assetDir / "models" / "cube.obj"))
 		return false;
-	if (!sphere.Load(device, assetDir / "models" / "sphere.obj"))
+	if (!cube256.Load(device, assetDir / "models" / "cube_256.obj"))
 		return false;
 
 	SceneObject ground;
@@ -56,26 +64,27 @@ bool Scene::Init(Device& device)
 		DirectX::XMMatrixScaling(15.0f, 0.1f, 15.0f) * DirectX::XMMatrixTranslation(0.0f, -0.1f, 0.0f));
 	m_objects.push_back(std::move(ground));
 
-	SceneObject castleWallRaw;
-	castleWallRaw.mesh = cube;
-	castleWallRaw.material = castleWallMaterialRaw;
-	DirectX::XMStoreFloat4x4(&castleWallRaw.world,
-		DirectX::XMMatrixScaling(1.0f, 1.0f, 1.0f) * DirectX::XMMatrixTranslation(-3.0f, 2.0f, 0.0f));
-	m_objects.push_back(std::move(castleWallRaw));
 
 	SceneObject castleWallNormal;
 	castleWallNormal.mesh = cube;
 	castleWallNormal.material = castleWallMaterial_normal;
 	DirectX::XMStoreFloat4x4(&castleWallNormal.world,
-		DirectX::XMMatrixScaling(1.0f, 1.0f, 1.0f) * DirectX::XMMatrixTranslation(0.0f, 2.0f, 0.0f));
+		DirectX::XMMatrixScaling(1.0f, 1.0f, 1.0f) * DirectX::XMMatrixTranslation(-3.0f, 2.0f, 0.0f));
 	m_objects.push_back(std::move(castleWallNormal));
 
 	SceneObject castleWallPOM;
 	castleWallPOM.mesh = cube;
 	castleWallPOM.material = castleWallMaterial_POM;
 	DirectX::XMStoreFloat4x4(&castleWallPOM.world,
-		DirectX::XMMatrixScaling(1.0f, 1.0f, 1.0f) * DirectX::XMMatrixTranslation(3.0f, 2.0f, 0.0f));
+		DirectX::XMMatrixScaling(1.0f, 1.0f, 1.0f) * DirectX::XMMatrixTranslation(0.0f, 2.0f, 0.0f));
 	m_objects.push_back(std::move(castleWallPOM));
+
+	SceneObject castleWallDisplacement;
+	castleWallDisplacement.mesh = cube256;
+	castleWallDisplacement.material = castleWallMaterial_Displacement;
+	DirectX::XMStoreFloat4x4(&castleWallDisplacement.world,
+		DirectX::XMMatrixScaling(1.0f, 1.0f, 1.0f) * DirectX::XMMatrixTranslation(3.0f, 2.0f, 0.0f));
+	m_objects.push_back(std::move(castleWallDisplacement));
 
 	m_pointLight.intensity = 0.0f;
 	m_spotLight.intensity = 0.0f;
