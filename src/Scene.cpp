@@ -16,13 +16,6 @@ bool Scene::Init(Device& device)
 	gray->albedo = { 0.305f, 0.305f, 0.305f };
 	m_materials.push_back(gray);
 
-	auto castleWallMaterial_normal = std::make_shared<Material>();
-	castleWallMaterial_normal->name = "Castle Wall Normal";
-	if (!castleWallMaterial_normal->albedoMap.Load(device, assetDir / "textures" / "castle_wall_albedo.png"))
-		return false;
-	if (!castleWallMaterial_normal->normalMap.Load(device, assetDir / "textures" / "castle_wall_normal.png"))
-		return false;
-	m_materials.push_back(castleWallMaterial_normal);
 
 	auto castleWallMaterial_POM = std::make_shared<Material>();
 	castleWallMaterial_POM->name = "Castle Wall POM";
@@ -65,25 +58,18 @@ bool Scene::Init(Device& device)
 	m_objects.push_back(std::move(ground));
 
 
-	SceneObject castleWallNormal;
-	castleWallNormal.mesh = cube;
-	castleWallNormal.material = castleWallMaterial_normal;
-	DirectX::XMStoreFloat4x4(&castleWallNormal.world,
-		DirectX::XMMatrixScaling(1.0f, 1.0f, 1.0f) * DirectX::XMMatrixTranslation(-3.0f, 2.0f, 0.0f));
-	m_objects.push_back(std::move(castleWallNormal));
-
 	SceneObject castleWallPOM;
 	castleWallPOM.mesh = cube;
 	castleWallPOM.material = castleWallMaterial_POM;
 	DirectX::XMStoreFloat4x4(&castleWallPOM.world,
-		DirectX::XMMatrixScaling(1.0f, 1.0f, 1.0f) * DirectX::XMMatrixTranslation(0.0f, 2.0f, 0.0f));
+		DirectX::XMMatrixScaling(1.0f, 1.0f, 1.0f) * DirectX::XMMatrixTranslation(-1.25f, 2.0f, 0.0f));
 	m_objects.push_back(std::move(castleWallPOM));
 
 	SceneObject castleWallDisplacement;
 	castleWallDisplacement.mesh = cube256;
 	castleWallDisplacement.material = castleWallMaterial_Displacement;
 	DirectX::XMStoreFloat4x4(&castleWallDisplacement.world,
-		DirectX::XMMatrixScaling(1.0f, 1.0f, 1.0f) * DirectX::XMMatrixTranslation(3.0f, 2.0f, 0.0f));
+		DirectX::XMMatrixScaling(1.0f, 1.0f, 1.0f) * DirectX::XMMatrixTranslation(1.25f, 2.0f, 0.0f));
 	m_objects.push_back(std::move(castleWallDisplacement));
 
 	m_pointLight.intensity = 0.0f;
