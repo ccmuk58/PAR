@@ -115,7 +115,7 @@ bool Device::CreateSwapChain(HWND hwnd)
 		"CreateSwapChainForHwnd"))
 		return false;
 
-	factory->MakeWindowAssociation(hwnd, DXGI_MWA_NO_ALT_ENTER);
+	// factory->MakeWindowAssociation(hwnd, DXGI_MWA_NO_ALT_ENTER);
 	return true;
 }
 
