@@ -77,6 +77,9 @@ bool Scene::Init(Device& device)
 		DirectX::XMMatrixScaling(1.0f, 1.0f, 1.0f) * DirectX::XMMatrixTranslation(3.0f, 2.0f, 0.0f));
 	m_objects.push_back(std::move(castleWallPOM));
 
+	m_pointLight.intensity = 0.0f;
+	m_spotLight.intensity = 0.0f;
+
 	return true;
 }
 
