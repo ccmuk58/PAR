@@ -45,9 +45,12 @@ bool Scene::Init(Device& device)
 	// object
 	Mesh cube;
 	Mesh cube256;
+	Mesh cube_rounded_256;
 	if (!cube.Load(device, assetDir / "models" / "cube.obj"))
 		return false;
 	if (!cube256.Load(device, assetDir / "models" / "cube_256.obj"))
+		return false;
+	if (!cube_rounded_256.Load(device, assetDir / "models" / "cube_rounded_256.obj"))
 		return false;
 
 	SceneObject ground;
@@ -57,7 +60,6 @@ bool Scene::Init(Device& device)
 		DirectX::XMMatrixScaling(15.0f, 0.1f, 15.0f) * DirectX::XMMatrixTranslation(0.0f, -0.1f, 0.0f));
 	m_objects.push_back(std::move(ground));
 
-
 	SceneObject castleWallPOM;
 	castleWallPOM.mesh = cube;
 	castleWallPOM.material = castleWallMaterial_POM;
@@ -66,7 +68,7 @@ bool Scene::Init(Device& device)
 	m_objects.push_back(std::move(castleWallPOM));
 
 	SceneObject castleWallDisplacement;
-	castleWallDisplacement.mesh = cube256;
+	castleWallDisplacement.mesh = cube_rounded_256;
 	castleWallDisplacement.material = castleWallMaterial_Displacement;
 	DirectX::XMStoreFloat4x4(&castleWallDisplacement.world,
 		DirectX::XMMatrixScaling(1.0f, 1.0f, 1.0f) * DirectX::XMMatrixTranslation(1.25f, 2.0f, 0.0f));
