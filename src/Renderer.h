@@ -1,6 +1,7 @@
 #pragma once
 #include "Shader.h"
 #include "Material.h"
+#include "GpuProfiler.h"
 #include <d3d11_1.h>
 #include <wrl/client.h>
 
@@ -28,6 +29,7 @@ public:
     void Render(const Scene& scene, const Camera& camera, const float clearColor[4]);
 
     ToneMapSettings& ToneMap() { return m_toneMap; }
+    GpuProfiler&     Profiler() { return m_profiler; }
 
 private:
     bool CreatePipeline();
@@ -63,4 +65,6 @@ private:
     ToneMapSettings                  m_toneMap;
     UINT                             m_hdrWidth = 0;
     UINT                             m_hdrHeight = 0;
+
+    GpuProfiler m_profiler;
 };

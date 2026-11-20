@@ -10,12 +10,55 @@
 
 namespace
 {
-    void DrawDebugPanel(Scene& scene, Renderer& renderer, CameraController& cameraController)
+    void DrawGpuTimings(GpuProfiler& profiler)
+    {
+        if (!ImGui::CollapsingHeader("GPU Timing", ImGuiTreeNodeFlags_DefaultOpen))
+            return;
+
+        ImGui::TextDisabled("avg / min / max over %d frames", GpuProfiler::kHistory);
+        ImGui::SameLine();
+        if (ImGui::SmallButton("Reset"))
+            profiler.Reset();
+
+        constexpr ImGuiTableFlags flags = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingFixedFit;
+        if (!ImGui::BeginTable("gpu", 4, flags))
+            return;
+        ImGui::TableSetupColumn("Scope", ImGuiTableColumnFlags_WidthStretch);
+        ImGui::TableSetupColumn("Avg ms");
+        ImGui::TableSetupColumn("Min");
+        ImGui::TableSetupColumn("Max");
+        ImGui::TableHeadersRow();
+
+        for (const GpuProfiler::Stat& stat : profiler.Stats())
+        {
+            if (!profiler.IsCurrent(stat))
+                continue;
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            ImGui::Indent(stat.depth * 12.0f + 0.001f);
+            ImGui::TextUnformatted(stat.label.c_str());
+            ImGui::Unindent(stat.depth * 12.0f + 0.001f);
+            ImGui::TableNextColumn();
+            ImGui::Text("%.3f", stat.avgMs);
+            ImGui::TableNextColumn();
+            ImGui::Text("%.3f", stat.minMs);
+            ImGui::TableNextColumn();
+            ImGui::Text("%.3f", stat.maxMs);
+        }
+        ImGui::EndTable();
+    }
+
+    void DrawDebugPanel(Scene& scene, Renderer& renderer, CameraController& cameraController, bool& vsync)
     {
         const ImGuiIO& io = ImGui::GetIO();
 
         ImGui::Begin("PAR");
         ImGui::Text("%.1f FPS (%.2f ms)", io.Framerate, 1000.0f / io.Framerate);
+        ImGui::Checkbox("VSync", &vsync);
+#if defined(_DEBUG)
+        ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.2f, 1.0f), "Debug build: shaders unoptimized");
+#endif
+        DrawGpuTimings(renderer.Profiler());
 
         ImGui::SeparatorText("Light");
         DirectionalLight& light = scene.Light();
@@ -134,6 +177,7 @@ int main()
     // ---------------- 메인 루프 ----------------
     double lastTime = window.Time();
     bool escapeWasDown = false;
+    bool vsync = false;
     while (!window.ShouldClose())
     {
         // OS 이벤트 처리
@@ -168,13 +212,23 @@ int main()
 
         cameraController.Update(camera, window, deltaTime);
         scene.Update(static_cast<float>(now));
-        DrawDebugPanel(scene, renderer, cameraController);
+        DrawDebugPanel(scene, renderer, cameraController, vsync);
 
         const float clearColor[4] = { 0.02f, 0.02f, 0.03f, 1.0f };
-        device.BeginFrame(clearColor);
-        renderer.Render(scene, camera, clearColor);
-        gui.Render();
-        device.Present(true);
+        GpuProfiler& profiler = renderer.Profiler();
+        ID3D11DeviceContext* ctx = device.Context();
+        profiler.BeginFrame(ctx);
+        {
+            GpuScope frameScope(profiler, ctx, "Frame");
+            device.BeginFrame(clearColor);
+            renderer.Render(scene, camera, clearColor);
+            {
+                GpuScope uiScope(profiler, ctx, "ImGui");
+                gui.Render();
+            }
+        }
+        profiler.EndFrame(ctx);
+        device.Present(vsync);
     }
 
     return 0;

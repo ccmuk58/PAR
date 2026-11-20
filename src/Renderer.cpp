@@ -10,6 +10,8 @@
 #include <cmath>
 #include <cstddef>
 #include <cstring>
+#include <format>
+#include <string>
 
 using Microsoft::WRL::ComPtr;
 namespace
@@ -107,7 +109,8 @@ namespace
 bool Renderer::Init(Device& device)
 {
 	m_device = &device;
-	return CreatePipeline() && CreateShadowMap() && CreateHdrTarget(device.Width(), device.Height());
+	return CreatePipeline() && CreateShadowMap() && CreateHdrTarget(device.Width(), device.Height())
+		&& m_profiler.Init(device.Get());
 }
 
 bool Renderer::CreatePipeline()
@@ -287,42 +290,50 @@ void Renderer::Render(const Scene& scene, const Camera& camera, const float clea
 	ctx->PSSetConstantBuffers(0, 3, cbs);
 
 	// shadow pass
-	const D3D11_VIEWPORT shadowViewport{ 0.0f, 0.0f, static_cast<float>(kShadowMapSize), static_cast<float>(kShadowMapSize), 0.0f, 1.0f };
-	ctx->OMSetRenderTargets(0, nullptr, m_shadowDsv.Get());
-	ctx->ClearDepthStencilView(m_shadowDsv.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
-	ctx->RSSetViewports(1, &shadowViewport);
-	ctx->RSSetState(m_shadowRasterizer.Get());
-	m_shadowShader.Bind(ctx);
-	DrawObjects(scene, false);
+	{
+		GpuScope scope(m_profiler, ctx, "Shadow");
+		const D3D11_VIEWPORT shadowViewport{ 0.0f, 0.0f, static_cast<float>(kShadowMapSize), static_cast<float>(kShadowMapSize), 0.0f, 1.0f };
+		ctx->OMSetRenderTargets(0, nullptr, m_shadowDsv.Get());
+		ctx->ClearDepthStencilView(m_shadowDsv.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
+		ctx->RSSetViewports(1, &shadowViewport);
+		ctx->RSSetState(m_shadowRasterizer.Get());
+		m_shadowShader.Bind(ctx);
+		DrawObjects(scene, false);
+	}
 
 	// main pass
-	const D3D11_VIEWPORT viewport{ 0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height), 0.0f, 1.0f };
-	ctx->OMSetRenderTargets(1, m_hdrRtv.GetAddressOf(), m_device->DepthView());
-	ctx->ClearRenderTargetView(m_hdrRtv.Get(), clearColor);
-	ctx->RSSetViewports(1, &viewport);
-	ctx->RSSetState(nullptr);
-	m_shader.Bind(ctx);
-	ID3D11SamplerState* const samplers[] = { m_sampler.Get(), m_shadowSampler.Get() };
-	ctx->PSSetSamplers(0, 2, samplers);
-	ctx->PSSetShaderResources(1, 1, m_shadowSrv.GetAddressOf());
-	DrawObjects(scene, true);
-
 	ID3D11ShaderResourceView* const nullSrv = nullptr;
-	ctx->PSSetShaderResources(1, 1, &nullSrv);
+	{
+		GpuScope scope(m_profiler, ctx, "Main");
+		const D3D11_VIEWPORT viewport{ 0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height), 0.0f, 1.0f };
+		ctx->OMSetRenderTargets(1, m_hdrRtv.GetAddressOf(), m_device->DepthView());
+		ctx->ClearRenderTargetView(m_hdrRtv.Get(), clearColor);
+		ctx->RSSetViewports(1, &viewport);
+		ctx->RSSetState(nullptr);
+		m_shader.Bind(ctx);
+		ID3D11SamplerState* const samplers[] = { m_sampler.Get(), m_shadowSampler.Get() };
+		ctx->PSSetSamplers(0, 2, samplers);
+		ctx->PSSetShaderResources(1, 1, m_shadowSrv.GetAddressOf());
+		DrawObjects(scene, true);
+		ctx->PSSetShaderResources(1, 1, &nullSrv);
+	}
 
 	// tone mapping pass
-	ToneMapCB toneMap{};
-	toneMap.exposure = std::exp2(m_toneMap.exposure);
-	toneMap.op = static_cast<int>(m_toneMap.op);
-	UpdateConstantBuffer(ctx, m_cbToneMap.Get(), toneMap);
+	{
+		GpuScope scope(m_profiler, ctx, "Tone Map");
+		ToneMapCB toneMap{};
+		toneMap.exposure = std::exp2(m_toneMap.exposure);
+		toneMap.op = static_cast<int>(m_toneMap.op);
+		UpdateConstantBuffer(ctx, m_cbToneMap.Get(), toneMap);
 
-	m_device->BindBackBuffer();
-	m_toneMapShader.Bind(ctx);
-	ctx->PSSetConstantBuffers(0, 1, m_cbToneMap.GetAddressOf());
-	ctx->PSSetShaderResources(0, 1, m_hdrSrv.GetAddressOf());
-	ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	ctx->Draw(3, 0);
-	ctx->PSSetShaderResources(0, 1, &nullSrv);
+		m_device->BindBackBuffer();
+		m_toneMapShader.Bind(ctx);
+		ctx->PSSetConstantBuffers(0, 1, m_cbToneMap.GetAddressOf());
+		ctx->PSSetShaderResources(0, 1, m_hdrSrv.GetAddressOf());
+		ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		ctx->Draw(3, 0);
+		ctx->PSSetShaderResources(0, 1, &nullSrv);
+	}
 }
 
 void Renderer::DrawObjects(const Scene& scene, bool bindMaterial)
@@ -331,8 +342,10 @@ void Renderer::DrawObjects(const Scene& scene, bool bindMaterial)
 	using namespace DirectX;
 
 	const Material* boundMaterial = nullptr;
-	for (const SceneObject& sceneObject : scene.Objects())
+	const auto& objects = scene.Objects();
+	for (size_t i = 0; i < objects.size(); ++i)
 	{
+		const SceneObject& sceneObject = objects[i];
 		// per object constant buffer
 		const XMMATRIX world = XMLoadFloat4x4(&sceneObject.world);
 		const XMMATRIX worldInvTranspose = XMMatrixTranspose(XMMatrixInverse(nullptr, world));
@@ -351,7 +364,14 @@ void Renderer::DrawObjects(const Scene& scene, bool bindMaterial)
 				boundMaterial = material;
 			}
 		}
-		ctx->DrawIndexed(sceneObject.mesh.IndexCount(), 0, 0);
+		if (bindMaterial)
+		{
+			const std::string& name = sceneObject.material ? sceneObject.material->name : std::string("Default");
+			GpuScope scope(m_profiler, ctx, std::format("#{} {}", i, name));
+			ctx->DrawIndexed(sceneObject.mesh.IndexCount(), 0, 0);
+		}
+		else
+			ctx->DrawIndexed(sceneObject.mesh.IndexCount(), 0, 0);
 	}
 }
 
