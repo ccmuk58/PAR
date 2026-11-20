@@ -135,7 +135,11 @@ float4 PSMain(PSInput input) : SV_Target
     
     float2 uv = input.uv;
     if(gHeightScale > 0.0f)
+    {
         uv = ParallaxOcclusion(input.uv, float3(dot(V, T), dot(V, B), dot(V, N0)));
+        if (any(uv < 0.0) || any(uv > 1.0))
+            discard;
+    }
     
     float3 N = SampleNormal(uv, T, B, N0);
 
