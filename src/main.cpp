@@ -10,6 +10,29 @@
 
 namespace
 {
+    struct CameraPreset
+    {
+        Key key;
+        DirectX::XMFLOAT3 position;
+        DirectX::XMFLOAT3 target;
+    };
+
+    // POM 큐브 (-2.5, 2, 1), Displacement 큐브 (2.5, 2, 1), 앞면 z = 0
+    constexpr CameraPreset kCameraPresets[] =
+    {
+        { Key::Num1, {  0.0f,  2.0f, -4.0f }, {  0.0f, 2.0f, 0.0f } },
+        { Key::Num2, { -2.5f,  2.0f, -1.3f }, { -2.5f, 2.0f, 0.0f } },
+        { Key::Num3, {  2.5f,  2.0f, -1.3f }, {  2.5f, 2.0f, 0.0f } },
+        { Key::Num4, { -1.15f, 2.4f, -0.9f }, { -2.5f, 2.0f, 0.0f } },
+        { Key::Num5, {  1.15f, 2.4f, -0.9f }, {  2.5f, 2.0f, 0.0f } },
+    };
+
+    void ApplyCameraPreset(Camera& camera, const CameraPreset& preset)
+    {
+        camera.SetPosition(preset.position);
+        camera.LookAt(preset.target);
+    }
+
     void DrawGpuTimings(GpuProfiler& profiler)
     {
         if (!ImGui::CollapsingHeader("GPU Timing", ImGuiTreeNodeFlags_DefaultOpen))
@@ -162,13 +185,11 @@ int main()
         return -1;
 
 	// 카메라 초기화
-	float initialY = 2.0f;
-    camera.SetPosition({ 0.0f, initialY, -6.0f });
-    camera.LookAt({ 0.0f, initialY, 0.0f });
+    ApplyCameraPreset(camera, kCameraPresets[0]);
     camera.SetPerspective(DirectX::XMConvertToRadians(60.0f), 0.1f, 100.0f);
     camera.SetAspectRatio(device.AspectRatio());
 
-    window.SetCursorCaptured(true);
+    // window.SetCursorCaptured(true);
 
     window.SetResizeCallback([&device, &camera](uint32_t width, uint32_t height) {
         device.Resize(width, height);
@@ -203,15 +224,26 @@ int main()
             else
                 window.RequestClose();
         }
-        else if (!escapeDown && window.IsMouseButtonDown(MouseButton::Left) && !gui.WantsMouse())
-            window.SetCursorCaptured(true);
+        // else if (!escapeDown && window.IsMouseButtonDown(MouseButton::Left) && !gui.WantsMouse())
+        //     window.SetCursorCaptured(true);
         escapeWasDown = escapeDown;
 
         const double now = window.Time();
         const float deltaTime = static_cast<float>(now - lastTime);
         lastTime = now;
 
-        cameraController.Update(camera, window, deltaTime);
+        // cameraController.Update(camera, window, deltaTime);
+        (void)deltaTime;
+
+        // 카메라 프리셋 (1~5)
+        if (!gui.WantsTextInput())
+        {
+            for (const CameraPreset& preset : kCameraPresets)
+            {
+                if (window.IsKeyDown(preset.key))
+                    ApplyCameraPreset(camera, preset);
+            }
+        }
         scene.Update(static_cast<float>(now));
         DrawDebugPanel(scene, renderer, cameraController, vsync);
 

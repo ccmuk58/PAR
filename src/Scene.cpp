@@ -67,14 +67,14 @@ bool Scene::Init(Device& device)
 	castleWallPOM.mesh = cube_rounded_low;
 	castleWallPOM.material = castleWallMaterial_POM;
 	DirectX::XMStoreFloat4x4(&castleWallPOM.world,
-		DirectX::XMMatrixScaling(1.0f, 1.0f, 1.0f) * DirectX::XMMatrixTranslation(-1.25f, 2.0f, 0.0f));
+		DirectX::XMMatrixScaling(1.0f, 1.0f, 1.0f) * DirectX::XMMatrixTranslation(-2.5f, 2.0f, 1.0f));
 	m_objects.push_back(std::move(castleWallPOM));
 
 	SceneObject castleWallDisplacement;
 	castleWallDisplacement.mesh = cube_rounded_256;
 	castleWallDisplacement.material = castleWallMaterial_Displacement;
 	DirectX::XMStoreFloat4x4(&castleWallDisplacement.world,
-		DirectX::XMMatrixScaling(1.0f, 1.0f, 1.0f) * DirectX::XMMatrixTranslation(1.25f, 2.0f, 0.0f));
+		DirectX::XMMatrixScaling(1.0f, 1.0f, 1.0f) * DirectX::XMMatrixTranslation(2.5f, 2.0f, 1.0f));
 	m_objects.push_back(std::move(castleWallDisplacement));
 
 	m_pointLight.intensity = 0.0f;

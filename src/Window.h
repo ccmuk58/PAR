@@ -9,6 +9,7 @@ struct GLFWwindow;
 enum class Key
 {
     W, A, S, D, Space, LeftShift, Escape,
+    Num1, Num2, Num3, Num4, Num5,
 };
 
 enum class MouseButton
